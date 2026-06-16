@@ -1,0 +1,248 @@
+/**
+ * Domain types — the authoritative model from the CMMS training manual.
+ * Field names and statuses are taken from the manual (Ch. 2, 8, 9, 10–14).
+ * Nothing the manual shows is dropped.
+ */
+
+// ---------------------------------------------------------------------------
+// Status sets (Ch. 14 — never invent these)
+// ---------------------------------------------------------------------------
+
+/** Inventory Status — Ch. 8 §8, Ch. 14. */
+export type InventoryStatus = "Needs Attention" | "Ready for Review" | "Review Complete";
+export const INVENTORY_STATUSES: InventoryStatus[] = [
+  "Needs Attention",
+  "Ready for Review",
+  "Review Complete",
+];
+
+/** Evidence of Inspection approval — Ch. 14 "Reviewing EOI". */
+export type EOIApproval = "Unset" | "Approved" | "Approved as Exception" | "Rejected";
+export const EOI_APPROVALS: Exclude<EOIApproval, "Unset">[] = [
+  "Approved",
+  "Approved as Exception",
+  "Rejected",
+];
+
+/** Pay Item Materials status — Ch. 14 "Reviewing Pay Item Materials". */
+export type PayItemMaterialStatus = "Approved" | "Approved as Exception" | "Deficient";
+export const PAY_ITEM_MATERIAL_STATUSES: PayItemMaterialStatus[] = [
+  "Approved",
+  "Approved as Exception",
+  "Deficient",
+];
+
+/** Group Status — derived from the balance (Ch. 8 grouping). */
+export type GroupStatus = "Satisfactory" | "Deficient";
+
+/** Quantity Ledger transaction type — Ch. 8. */
+export type LedgerType = "Received" | "Tested" | "Adjustment";
+export const LEDGER_TYPES: LedgerType[] = ["Received", "Tested", "Adjustment"];
+
+// ---------------------------------------------------------------------------
+// Reference entities
+// ---------------------------------------------------------------------------
+
+export interface Material {
+  code: string; // e.g. "19522R"
+  name: string; // e.g. "HMA BC N70 19.0"
+  unit: string; // material unit of measure (Tons, Gallons, Each, …)
+  family: MaterialFamily;
+  /** preset material conversion factor (material qty required per pay unit) */
+  conversionFactor: number;
+}
+
+export type MaterialFamily =
+  | "HMA"
+  | "Paint"
+  | "Concrete"
+  | "Aggregate"
+  | "Steel"
+  | "Soil"
+  | "Hardware"
+  | "Other";
+
+export interface Vendor {
+  number: string; // e.g. "2112-14"
+  name: string; // e.g. "Advance Asphalt Co"
+  city: string;
+  state: string;
+}
+
+export interface PayItem {
+  number: string; // e.g. "44201794"
+  description: string; // e.g. "CLASS D PATCHES, TYPE III, 12 INCH"
+  unit: string; // pay item unit of measure (SQ YD, GAL, …)
+  unitPrice: number;
+  awardedQuantity: number;
+  placedQuantity: number;
+}
+
+// ---------------------------------------------------------------------------
+// Inventory (Ch. 8) — the hero entity
+// ---------------------------------------------------------------------------
+
+/** Top-level inventory row as shown in the Contract Inventory Summary grid (Ch. 8). */
+export interface InventoryItem {
+  id: string; // internal id
+  inventoryId: string; // displayed "Inventory ID"
+  contractId: string;
+  contractNumber: string; // denormalized for the cross-contract inbox
+  materialCode: string;
+  materialName: string;
+  materialUnit: string;
+  producerNumber: string;
+  producerName: string;
+  supplierNumber: string;
+  supplierName: string;
+  status: InventoryStatus;
+  note: string;
+  payItemNumbers: string[]; // linked pay items (Details tab)
+  /** epoch ms the item entered "Ready for Review" — drives "oldest waiting first". */
+  readyAt: number | null;
+}
+
+/** Full inventory detail — the four tabs. Generated on demand from the item seed. */
+export interface InventoryDetail extends InventoryItem {
+  ledger: LedgerEntry[];
+  eoi: EOIEntry[];
+  payItemMaterials: PayItemMaterialRow[];
+}
+
+/** Quantity Ledger row (Ch. 8 "Quantity Ledger Tab"). */
+export interface LedgerEntry {
+  id: number; // "Id" column — referenced by EOI rows
+  date: string; // ISO date
+  payItemNumber: string;
+  desc1: string; // material-specific (e.g. Rebar Size). Often blank.
+  desc2: string;
+  desc3: string;
+  mixDesign: string; // e.g. "80BIT1234"
+  batchLotHeat: string; // e.g. "L19050193"
+  type: LedgerType;
+  transactionQty: number; // in material unit of measure
+}
+
+/** Evidence of Inspection row (Ch. 8 "Evidence of Inspection Tab", Ch. 14). */
+export interface EOIEntry {
+  id: string;
+  ledgerIds: number[]; // references LedgerEntry.id (may be multiple)
+  actualEoi: string[]; // TICK / TEST / DPR / LA-15 / LIST / CERT / MARK
+  actualMoa: string[]; // TEST / QUAL / CERT
+  testId: string; // may be blank
+  approval: EOIApproval;
+  note: string;
+  hasDocument: boolean;
+}
+
+/** A row in the Pay Item Materials tab (Ch. 8) — provided vs. required. */
+export interface PayItemMaterialRow {
+  payItemNumber: string;
+  payItemDescription: string;
+  payItemUnit: string;
+  placedQuantity: number;
+  group: string; // PI Inv Group letter (A, B, …)
+  materialQuantityProvided: number;
+  materialUnit: string;
+  conversionFactor: number;
+  materialQuantityRequired: number;
+  balance: number; // provided − required
+  groupStatus: GroupStatus;
+  payItemMaterialStatus: PayItemMaterialStatus;
+}
+
+// ---------------------------------------------------------------------------
+// Contract (Ch. 2) — Summary tab, every field preserved
+// ---------------------------------------------------------------------------
+
+export interface Contract {
+  id: string;
+  number: string; // IDOT-style contract number, e.g. "76123"
+  name: string;
+  county: string;
+  district: number;
+  workType: string;
+  /** quick counts for the tree / lists (denormalized from inventory) */
+  inventoryCount: number;
+  readyForReviewCount: number;
+  summary: ContractSummary;
+}
+
+/**
+ * Contract Summary fields (Ch. 2). Grouped to match the Phase-2 cards
+ * (Contract Info, Dates/Key Info, Values, Work Type, Time Spec). Every field is
+ * preserved; empty ones are hidden until editing.
+ */
+export interface ContractSummary {
+  // Job Description / Contract Info
+  jobDescription: string;
+  section: string;
+  route: string;
+  county: string;
+  district: number;
+  projectNumber: string;
+  federalProjectNumber: string;
+  contractStatus: string; // Active / Suspended / Completed / Closed
+  primeContractor: string;
+  primeContractorId: string;
+
+  // Construction & Designer
+  residentEngineer: string;
+  supervisingFieldEngineer: string;
+  districtConstructionEngineer: string;
+  designerFirm: string;
+  projectImplementationEngineer: string;
+
+  // Preconstruction submittals
+  progressScheduleReceived: string | null; // ISO date or null
+  ehsPlanReceived: string | null;
+  dbeProgramReceived: string | null;
+
+  // Letting & Contractor dates
+  lettingDate: string | null;
+  awardDate: string | null;
+  executedDate: string | null;
+  noticeToProceedDate: string | null;
+  workBeginDate: string | null;
+  contractCompletionDate: string | null;
+  finalInspectionDate: string | null;
+  contractSuspendedDate: string | null;
+
+  // Contract cost / Values
+  engineersEstimate: number;
+  awardedAmount: number;
+  currentContractAmount: number;
+  totalPaidToDate: number;
+
+  // DBE percentage & Adjustment
+  dbeGoalPct: number;
+  dbeCommittedPct: number;
+  adjustmentAmount: number;
+
+  // Work type
+  primaryWorkType: string;
+  terrain: string;
+  funding: string; // Federal / State / Local
+  specificationYear: string;
+  units: string; // English / Metric
+
+  // Contract time
+  timeType: string; // Calendar Days / Working Days / Completion Date
+  originalContractTime: number; // days (0 when completion-date type)
+  currentContractTime: number;
+  timeChargedToDate: number;
+  liquidatedDamagesPerDay: number;
+}
+
+// ---------------------------------------------------------------------------
+// Cross-contract review queue (Phase 1b)
+// ---------------------------------------------------------------------------
+
+/** A "Ready for Review" inventory item, decorated for the approval inbox. */
+export interface ReviewQueueItem extends InventoryItem {
+  contractName: string;
+  /** ms waiting since readyAt — drives "oldest waiting first". */
+  waitingMs: number;
+  /** stable key for duplicate detection: contract + material + producer + supplier. */
+  dedupeKey: string;
+}
