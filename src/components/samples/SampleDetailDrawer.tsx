@@ -100,7 +100,7 @@ function IdentificationGroup({ sample }: { sample: Sample }) {
   ];
 
   return (
-    <FieldGroup title="Identification" fields={fields} showEmpty>
+    <FieldGroup title="Identification" fields={fields} showEmpty collapsible={false}>
       {canTest && !decided && (
         <div className="mt-3 flex items-center gap-2">
           <label className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Testing Status</label>
@@ -129,7 +129,7 @@ function MaterialGroup({ sample }: { sample: Sample }) {
     { label: "Special ID", value: sample.specialId },
     { label: "Inspected Quantity", value: `${sample.inspectedQty} ${sample.materialUnit}` },
   ];
-  return <FieldGroup title="Material" fields={fields} showEmpty />;
+  return <FieldGroup title="Material" fields={fields} showEmpty collapsible={false} />;
 }
 
 function SourceGroup({ sample }: { sample: Sample }) {
@@ -141,7 +141,7 @@ function SourceGroup({ sample }: { sample: Sample }) {
     { label: "DSA/BABA", value: sample.dsaBaba, type: "bool" },
     { label: "Responsible Lab", value: sample.responsibleLab },
   ];
-  return <FieldGroup title="Source" fields={fields} showEmpty />;
+  return <FieldGroup title="Source" fields={fields} showEmpty collapsible={false} />;
 }
 
 function LinkageGroup({ sample }: { sample: Sample }) {
@@ -151,7 +151,7 @@ function LinkageGroup({ sample }: { sample: Sample }) {
     { label: "Pay Item", value: sample.payItemNumber ?? "", type: "mono" },
     { label: "Inventory", value: sample.inventoryItemId ? "Linked" : "" },
   ];
-  return <FieldGroup title="Linkage" fields={fields} showEmpty />;
+  return <FieldGroup title="Linkage" fields={fields} showEmpty collapsible={false} />;
 }
 
 function DatesGroup({ sample }: { sample: Sample }) {
@@ -160,7 +160,7 @@ function DatesGroup({ sample }: { sample: Sample }) {
     { label: "Started Date", value: sample.startedDate, type: "date" },
     { label: "Completed Date", value: sample.completedDate, type: "date" },
   ];
-  return <FieldGroup title="Dates" fields={fields} showEmpty />;
+  return <FieldGroup title="Dates" fields={fields} showEmpty collapsible={false} />;
 }
 
 function ReviewGroup({ sample }: { sample: Sample }) {
@@ -169,7 +169,7 @@ function ReviewGroup({ sample }: { sample: Sample }) {
     { label: "Approved Date", value: sample.approvedDate, type: "date" },
     { label: "Note", value: sample.note },
   ];
-  return <FieldGroup title="Review" fields={fields} showEmpty />;
+  return <FieldGroup title="Review" fields={fields} showEmpty collapsible={false} />;
 }
 
 function TestsSection({ sample, tests }: { sample: Sample; tests: Test[] }) {
