@@ -6,7 +6,7 @@ import { ChevronDown, UsersIcon } from "@/components/ui/icons";
 import { ROLE_LABELS } from "@/auth/permissions";
 import { ContractSelector } from "./ContractSelector";
 
-export function Header() {
+export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   const { contractId } = useParams();
   const contract = useStore((s) => (contractId ? s.contract(contractId) : undefined));
   const saving = useStore((s) => s.savingCount > 0);
@@ -17,7 +17,17 @@ export function Header() {
   const [selectorOpen, setSelectorOpen] = useState(false);
 
   return (
-    <header className="col-span-2 flex items-center gap-3 border-b border-line bg-surface px-4">
+    <header className="col-span-1 flex items-center gap-2 border-b border-line bg-surface px-3 sm:gap-3 sm:px-4 lg:col-span-2">
+      <button
+        onClick={onMenuClick}
+        aria-label="Open menu"
+        className="-ml-1 rounded-lg p-1.5 text-ink-soft hover:bg-canvas lg:hidden"
+      >
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <path d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+
       <div className="flex items-center gap-2.5">
         <div className="flex h-7 w-7 items-center justify-center rounded-md bg-accent text-accent-fg">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -30,16 +40,16 @@ export function Header() {
         </div>
       </div>
 
-      <div className="mx-1 h-6 w-px bg-line" />
+      <div className="mx-1 hidden h-6 w-px bg-line sm:block" />
 
       <button
         onClick={() => setSelectorOpen(true)}
-        className="flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm transition hover:border-line-strong hover:bg-canvas"
+        className="flex min-w-0 items-center gap-2 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm transition hover:border-line-strong hover:bg-canvas"
       >
         {contract ? (
           <>
             <span className="font-mono font-semibold text-ink">{contract.number}</span>
-            <span className="max-w-[280px] truncate text-ink-soft">{contract.name}</span>
+            <span className="hidden max-w-[280px] truncate text-ink-soft sm:inline">{contract.name}</span>
           </>
         ) : (
           <span className="text-ink-soft">Select a contract…</span>
@@ -47,7 +57,7 @@ export function Header() {
         <ChevronDown className="text-base text-ink-faint" />
       </button>
 
-      <div className="ml-auto flex items-center gap-3">
+      <div className="ml-auto flex items-center gap-2 sm:gap-3">
         {saving && (
           <span className="flex items-center gap-1.5 text-xs text-ink-soft">
             <Spinner className="text-sm" /> Saving…
@@ -55,7 +65,7 @@ export function Header() {
         )}
         {dataSourceName === "local" && currentUser && (
           <label
-            className="flex items-center gap-1.5 rounded-lg border border-line bg-canvas px-2 py-1 text-xs text-ink-soft"
+            className="hidden items-center gap-1.5 rounded-lg border border-line bg-canvas px-2 py-1 text-xs text-ink-soft md:flex"
             title="Preview a role (dev only — replaced by Supabase Auth in brief 12)"
           >
             <UsersIcon className="text-sm text-ink-faint" />
@@ -74,7 +84,7 @@ export function Header() {
           </label>
         )}
         <span
-          className="rounded-full border border-line bg-canvas px-2.5 py-1 text-[11px] font-medium text-ink-soft"
+          className="hidden rounded-full border border-line bg-canvas px-2.5 py-1 text-[11px] font-medium text-ink-soft sm:inline"
           title="Active data source (the dataSource seam)"
         >
           {dataSourceName === "local" ? "Local data" : "Supabase"}

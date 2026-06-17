@@ -13,6 +13,7 @@ import {
   TruckIcon,
   TagIcon,
   BeakerIcon,
+  XIcon,
 } from "@/components/ui/icons";
 
 const TREE_NODES = [
@@ -32,7 +33,7 @@ const MATERIALS_NODES = [
   { to: "/materials/mix-designs", label: "Mix Design", Icon: BeakerIcon },
 ] as const;
 
-export function Sidebar() {
+export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: () => void }) {
   const { contractId } = useParams();
   const contract = useStore((s) => (contractId ? s.contract(contractId) : undefined));
   const contracts = useStore((s) => s.contracts);
@@ -43,7 +44,34 @@ export function Sidebar() {
   );
 
   return (
-    <aside className="row-span-1 flex flex-col gap-1 border-r border-line bg-surface px-3 py-3">
+    <>
+      {/* backdrop — mobile only, when the drawer is open */}
+      <div
+        onClick={onClose}
+        className={[
+          "fixed inset-0 top-[56px] z-30 bg-black/30 transition-opacity lg:hidden",
+          open ? "opacity-100" : "pointer-events-none opacity-0",
+        ].join(" ")}
+        aria-hidden={!open}
+      />
+      <aside
+        className={[
+          "row-span-1 flex w-[252px] flex-col gap-1 overflow-y-auto border-r border-line bg-surface px-3 py-3",
+          // off-canvas drawer below lg, static column at lg+
+          "fixed inset-y-0 left-0 top-[56px] z-40 transform transition-transform duration-200",
+          "lg:static lg:top-0 lg:z-auto lg:w-auto lg:translate-x-0",
+          open ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0",
+        ].join(" ")}
+      >
+      {/* close button — mobile drawer only */}
+      <button
+        onClick={onClose}
+        aria-label="Close menu"
+        className="mb-1 flex items-center gap-2 self-end rounded-lg px-2 py-1 text-sm text-ink-soft hover:bg-canvas lg:hidden"
+      >
+        <XIcon className="text-lg" /> Close
+      </button>
+
       <NavLink
         to="/inbox"
         className={({ isActive }) =>
@@ -155,6 +183,7 @@ export function Sidebar() {
       <div className="mt-auto px-3 pt-4 text-[11px] text-ink-faint">
         {visibleIds.size.toLocaleString()} of {contracts.length.toLocaleString()} contracts in scope
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

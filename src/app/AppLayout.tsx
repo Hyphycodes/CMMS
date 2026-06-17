@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import { useStore } from "@/store/store";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
@@ -10,10 +10,17 @@ export function AppLayout() {
   const status = useStore((s) => s.status);
   const error = useStore((s) => s.error);
   const load = useStore((s) => s.load);
+  const [navOpen, setNavOpen] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // close the mobile drawer whenever the route changes
+  useEffect(() => {
+    setNavOpen(false);
+  }, [location.pathname]);
 
   if (status === "idle" || status === "loading") {
     return <LoadingScreen message="Loading contracts…" />;
@@ -28,9 +35,9 @@ export function AppLayout() {
   }
 
   return (
-    <div className="grid h-full grid-cols-[252px_1fr] grid-rows-[56px_1fr]">
-      <Header />
-      <Sidebar />
+    <div className="grid h-full grid-rows-[56px_1fr] lg:grid-cols-[252px_1fr]">
+      <Header onMenuClick={() => setNavOpen(true)} />
+      <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
       <main className="min-h-0 overflow-hidden bg-canvas">
         <Outlet />
       </main>
