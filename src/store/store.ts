@@ -26,6 +26,7 @@ import type {
   DiarySuspension,
   PlacementEntry,
   PayEstimate,
+  Authorization,
 } from "@/domain/types";
 import { lineAmount, sumAmounts } from "@/domain/money";
 import { getDataSource } from "@/data/dataSource";
@@ -66,6 +67,9 @@ interface State {
   // pay estimate (brief 09)
   payEstimatesList: PayEstimate[];
 
+  // authorizations (brief 10)
+  authorizationsList: Authorization[];
+
   // samples + tests (briefs 03–04)
   samplesList: Sample[];
   testsList: Test[];
@@ -100,6 +104,7 @@ interface State {
   placementsForContract(contractId: string): PlacementEntry[];
   placementsForPayItem(contractId: string, payItemNumber: string): PlacementEntry[];
   payEstimatesForContract(contractId: string): PayEstimate[];
+  authorizationsForContract(contractId: string): Authorization[];
 
   // mutations (optimistic)
   setInventoryStatus(ids: string[], status: InventoryStatus, opts?: { note?: string }): void;
@@ -130,6 +135,11 @@ interface State {
   // pay estimate (brief 09)
   createPayEstimate(contractId: string, periodStart: string, periodEnd: string): string | undefined;
   submitPayEstimate(id: string): void;
+
+  // authorizations (brief 10)
+  saveAuthorization(authorization: Authorization): void;
+  submitAuthorization(id: string): void;
+  advanceAuthApproval(id: string): void;
 
   // samples + tests (briefs 03–04)
   upsertSample(sample: Sample): void;
@@ -163,6 +173,7 @@ export const useStore = create<State>((set, get) => ({
 
   placementsList: [],
   payEstimatesList: [],
+  authorizationsList: [],
 
   samplesList: [],
   testsList: [],
@@ -206,6 +217,7 @@ export const useStore = create<State>((set, get) => ({
         suspensionsByContract: world.suspensionsByContract,
         placementsList: world.placements,
         payEstimatesList: world.payEstimates,
+        authorizationsList: world.authorizations,
         samplesList: world.samples,
         testsList: world.tests,
         testTemplates: world.testTemplates,
@@ -308,6 +320,10 @@ export const useStore = create<State>((set, get) => ({
   payEstimatesForContract: (contractId) =>
     get()
       .payEstimatesList.filter((e) => e.contractId === contractId)
+      .sort((a, b) => a.number - b.number),
+  authorizationsForContract: (contractId) =>
+    get()
+      .authorizationsList.filter((a) => a.contractId === contractId)
       .sort((a, b) => a.number - b.number),
 
   setInventoryStatus(ids, status, opts) {
@@ -694,6 +710,96 @@ export const useStore = create<State>((set, get) => ({
     get().pushToast("success", `Submitted Estimate #${est.number}`);
   },
 
+  saveAuthorization(authorization) {
+    if (!canDo(get().currentUser, "manage_authorization")) {
+      get().pushToast("error", "Your role can't manage authorizations.");
+      return;
+    }
+    const withNet: Authorization = {
+      ...authorization,
+      netChange: sumAmounts(authorization.items.map((i) => lineAmount(i.quantity, i.unitPrice))),
+    };
+    const list = get().authorizationsList;
+    const idx = list.findIndex((a) => a.id === withNet.id);
+    const prev = idx >= 0 ? list[idx] : null;
+    set({ authorizationsList: idx >= 0 ? list.map((a) => (a.id === withNet.id ? withNet : a)) : [...list, withNet] });
+    void persist(
+      get,
+      set,
+      async (ds) => ds.persistAuthorization(withNet),
+      () => {
+        const cur = get().authorizationsList;
+        set({ authorizationsList: prev ? cur.map((a) => (a.id === withNet.id ? prev : a)) : cur.filter((a) => a.id !== withNet.id) });
+      },
+      "Couldn't save authorization",
+    );
+  },
+
+  submitAuthorization(id) {
+    if (!canDo(get().currentUser, "manage_authorization")) {
+      get().pushToast("error", "Your role can't submit authorizations.");
+      return;
+    }
+    const auth = get().authorizationsList.find((a) => a.id === id);
+    if (!auth || auth.status !== "Draft") return;
+    saveAuth(get, set, { ...auth, status: "In Approval" });
+    get().pushToast("info", `Authorization #${auth.number} routed for approval`);
+  },
+
+  advanceAuthApproval(id) {
+    if (!canDo(get().currentUser, "manage_authorization")) {
+      get().pushToast("error", "Your role can't approve authorizations.");
+      return;
+    }
+    const auth = get().authorizationsList.find((a) => a.id === id);
+    if (!auth || auth.status === "Published") return;
+    const nextStep = auth.approvals.findIndex((a) => a.approver === null);
+    if (nextStep === -1) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const approvals = auth.approvals.map((a, i) =>
+      i === nextStep ? { ...a, approver: get().currentUser?.name ?? "", approvedAt: today } : a,
+    );
+    const allSigned = approvals.every((a) => a.approver !== null);
+
+    if (!allSigned) {
+      saveAuth(get, set, { ...auth, status: "In Approval", approvals });
+      get().pushToast("success", `Approved step: ${auth.approvals[nextStep].step}`);
+      return;
+    }
+
+    // Final approval → Publish + propagate to pay items + contract value (ONE path).
+    const published: Authorization = { ...auth, status: "Published", approvals };
+    saveAuth(get, set, published);
+    const payItems = get().payItemsByContract.get(auth.contractId) ?? [];
+    for (const item of published.items) {
+      const existing = payItems.find((p) => p.number === item.payItemNumber);
+      if (existing) {
+        get().updatePayItem(auth.contractId, { ...existing, awardedQuantity: existing.awardedQuantity + item.quantity });
+      } else {
+        get().updatePayItem(auth.contractId, {
+          number: item.payItemNumber,
+          description: item.description,
+          unit: item.unit,
+          unitPrice: item.unitPrice,
+          awardedQuantity: item.quantity,
+          placedQuantity: 0,
+        });
+      }
+    }
+    const contract = get().contractsById.get(auth.contractId);
+    if (contract) {
+      updateContractInMemory(get, set, auth.contractId, (c) => ({
+        ...c,
+        summary: {
+          ...c.summary,
+          adjustmentAmount: Math.round((c.summary.adjustmentAmount + published.netChange) * 100) / 100,
+          currentContractAmount: Math.round((c.summary.currentContractAmount + published.netChange) * 100) / 100,
+        },
+      }));
+    }
+    get().pushToast("success", `Authorization #${auth.number} published — pay items + contract value updated`);
+  },
+
   upsertSample(sample) {
     if (!canDo(get().currentUser, "create_sample")) {
       get().pushToast("error", "Your role can't create or edit samples.");
@@ -789,6 +895,21 @@ function saveSample(
       });
     },
     failMessage,
+  );
+}
+
+function saveAuth(get: () => State, set: (p: Partial<State>) => void, auth: Authorization) {
+  const list = get().authorizationsList;
+  const prev = list.find((a) => a.id === auth.id) ?? null;
+  set({ authorizationsList: list.map((a) => (a.id === auth.id ? auth : a)) });
+  void persist(
+    get,
+    set,
+    async (ds) => ds.persistAuthorization(auth),
+    () => {
+      if (prev) set({ authorizationsList: get().authorizationsList.map((a) => (a.id === auth.id ? prev : a)) });
+    },
+    "Couldn't save authorization",
   );
 }
 

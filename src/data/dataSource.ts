@@ -22,6 +22,7 @@ import type {
   PlacementEntry,
   PayItem,
   PayEstimate,
+  Authorization,
 } from "@/domain/types";
 import type { World, SeedConfig } from "./seed/generate";
 
@@ -53,6 +54,8 @@ export interface LoadResult {
   payItemDeltas: Record<string, PayItem>;
   /** Pay estimate create/submit, keyed by estimate id (brief 09) */
   payEstimateDeltas: Record<string, PayEstimate>;
+  /** Authorization create/approve/publish, keyed by authorization id (brief 10) */
+  authorizationDeltas: Record<string, Authorization>;
 }
 
 export interface InventoryStatusUpdate {
@@ -101,6 +104,9 @@ export interface DataSource {
 
   // Pay Estimate (brief 09).
   persistPayEstimate(estimate: PayEstimate): Promise<void>;
+
+  // Authorizations (brief 10).
+  persistAuthorization(authorization: Authorization): Promise<void>;
 }
 
 let cached: DataSource | null = null;

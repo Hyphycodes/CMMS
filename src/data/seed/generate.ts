@@ -44,6 +44,9 @@ import type {
   PlacementEntry,
   PayEstimate,
   PayEstimateLine,
+  Authorization,
+  AuthType,
+  AuthApproval,
 } from "@/domain/types";
 import { makeRng, type Rng } from "./rng";
 import { buildPayItemMaterials } from "@/domain/grouping";
@@ -74,7 +77,14 @@ export interface World {
   suspensionsByContract: Map<string, DiarySuspension[]>;
   placements: PlacementEntry[];
   payEstimates: PayEstimate[];
+  authorizations: Authorization[];
 }
+
+export const AUTH_STEPS: Record<AuthType, string[]> = {
+  Standard: ["Resident Engineer", "District Construction"],
+  "Overage/Balancing": ["Resident Engineer", "District Construction", "Bureau of Construction"],
+  "Major Change": ["Resident Engineer", "District Construction", "Bureau of Construction", "FHWA"],
+};
 
 const FUND_KEYS = ["FED-STP", "STATE-01", "LOCAL-A", "FED-NHPP", "STATE-BR"];
 
@@ -579,6 +589,7 @@ export function generateWorld(config: SeedConfig = DEFAULT_SEED_CONFIG): World {
 
   const placements = generatePlacements(contracts, payItemsByContract);
   const payEstimates = generatePayEstimates(contracts, payItemsByContract, placements);
+  const authorizations = generateAuthorizations(contracts, payItemsByContract);
 
   return {
     contracts,
@@ -590,7 +601,59 @@ export function generateWorld(config: SeedConfig = DEFAULT_SEED_CONFIG): World {
     suspensionsByContract,
     placements,
     payEstimates,
+    authorizations,
   };
+}
+
+/** A few authorizations per contract (Ch. 7) — brief 10. */
+function generateAuthorizations(contracts: Contract[], payItemsByContract: Map<string, PayItem[]>): Authorization[] {
+  const out: Authorization[] = [];
+  for (const c of contracts) {
+    const rng = makeRng(`${MASTER_SEED}:auth:${c.id}`);
+    const n = rng.weighted<number>([[0, 3], [1, 3], [2, 3], [3, 1]]);
+    const payItems = payItemsByContract.get(c.id) ?? [];
+    for (let k = 1; k <= n; k++) {
+      const type = rng.weighted<AuthType>([["Standard", 6], ["Overage/Balancing", 3], ["Major Change", 1]]);
+      const itemCount = rng.int(1, 3);
+      const items = Array.from({ length: itemCount }, () => {
+        const existing = payItems.length && rng.bool(0.7);
+        const pi = existing ? rng.pick(payItems) : null;
+        const qty = rng.float(-200, 800, 0);
+        return {
+          payItemNumber: pi?.number ?? `999${rng.int(1000, 9999)}`,
+          description: pi?.description ?? "NEW ITEM — FIELD CHANGE",
+          unit: pi?.unit ?? "EACH",
+          quantity: qty,
+          unitPrice: pi?.unitPrice ?? rng.float(5, 500),
+          isNew: !pi,
+        };
+      });
+      const netChange = Math.round(sumAmounts(items.map((i) => lineAmount(i.quantity, i.unitPrice))) * 100) / 100;
+      const steps = AUTH_STEPS[type];
+      const status = rng.weighted<Authorization["status"]>([["Published", 5], ["In Approval", 3], ["Draft", 2]]);
+      const signedCount = status === "Published" ? steps.length : status === "In Approval" ? rng.int(0, steps.length - 1) : 0;
+      const createdEpoch = Date.now() - rng.int(20, 300) * MS_DAY;
+      const approvals: AuthApproval[] = steps.map((step, i) => ({
+        step,
+        approver: i < signedCount ? rng.pick(STAFF_NAMES) : null,
+        approvedAt: i < signedCount ? isoDate(createdEpoch + (i + 1) * rng.int(2, 10) * MS_DAY) : null,
+      }));
+      out.push({
+        id: `auth_${c.id}_${k}`,
+        contractId: c.id,
+        number: k,
+        type,
+        description: rng.pick(["Field-directed quantity change", "Balancing overage to plan", "Added drainage work", "Traffic control revision", "Unforeseen subgrade repair"]),
+        netChange,
+        status,
+        createdDate: isoDate(createdEpoch),
+        items,
+        approvals,
+        hasAttachment: rng.bool(0.7),
+      });
+    }
+  }
+  return out;
 }
 
 /** Prior pay estimates per active contract; marks included placements (brief 09). */

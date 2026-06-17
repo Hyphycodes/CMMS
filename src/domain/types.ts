@@ -111,6 +111,40 @@ export interface PayItem {
   final?: boolean; // "Final a pay item" (brief 08)
 }
 
+/** Authorizations (Ch. 7) — brief 10. */
+export type AuthType = "Standard" | "Overage/Balancing" | "Major Change";
+export const AUTH_TYPES: AuthType[] = ["Standard", "Overage/Balancing", "Major Change"];
+export type AuthStatus = "Draft" | "In Approval" | "Published";
+
+export interface AuthItem {
+  payItemNumber: string;
+  description: string;
+  unit: string;
+  quantity: number; // change in awarded quantity (+/−)
+  unitPrice: number;
+  isNew: boolean;
+}
+
+export interface AuthApproval {
+  step: string;
+  approver: string | null;
+  approvedAt: string | null;
+}
+
+export interface Authorization {
+  id: string;
+  contractId: string;
+  number: number;
+  type: AuthType;
+  description: string;
+  netChange: number;
+  status: AuthStatus;
+  createdDate: string;
+  items: AuthItem[];
+  approvals: AuthApproval[];
+  hasAttachment: boolean; // BC 24 etc.
+}
+
 /** Pay Estimate (Ch. 6) — brief 09. */
 export type PayEstimateStatus = "Draft" | "Submitted" | "Approved" | "Paid";
 export const PAY_ESTIMATE_STATUSES: PayEstimateStatus[] = ["Draft", "Submitted", "Approved", "Paid"];

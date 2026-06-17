@@ -30,6 +30,7 @@ import type {
   DiarySuspension,
   PlacementEntry,
   PayEstimate,
+  Authorization,
 } from "@/domain/types";
 import type { SeedConfig, World } from "../seed/generate";
 import { TEST_TEMPLATES } from "../seed/generate";
@@ -88,6 +89,7 @@ export function createSupabaseDataSource(): DataSource {
         suspensionsByContract: new Map(),
         placements: [],
         payEstimates: [],
+        authorizations: [],
       };
       return {
         world,
@@ -99,6 +101,7 @@ export function createSupabaseDataSource(): DataSource {
         placementDeltas: {},
         payItemDeltas: {},
         payEstimateDeltas: {},
+        authorizationDeltas: {},
       };
     },
 
@@ -270,6 +273,26 @@ export function createSupabaseDataSource(): DataSource {
           lines: e.lines,
           this_estimate_total: e.thisEstimateTotal,
           to_date_total: e.toDateTotal,
+        },
+        { onConflict: "id" },
+      );
+      if (error) throw error;
+    },
+
+    async persistAuthorization(a: Authorization): Promise<void> {
+      const { error } = await db.from("authorizations").upsert(
+        {
+          id: a.id,
+          contract_id: a.contractId,
+          number: a.number,
+          type: a.type,
+          description: a.description,
+          net_change: a.netChange,
+          status: a.status,
+          created_date: a.createdDate,
+          items: a.items,
+          approvals: a.approvals,
+          has_attachment: a.hasAttachment,
         },
         { onConflict: "id" },
       );

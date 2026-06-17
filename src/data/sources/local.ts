@@ -25,6 +25,7 @@ import type {
   PlacementEntry,
   PayItem,
   PayEstimate,
+  Authorization,
 } from "@/domain/types";
 import { generateWorld, type SeedConfig } from "../seed/generate";
 
@@ -45,6 +46,7 @@ interface StoredDeltas {
   placements: Record<string, PlacementEntry>;
   payItems: Record<string, PayItem>;
   payEstimates: Record<string, PayEstimate>;
+  authorizations: Record<string, Authorization>;
 }
 
 function emptyDeltas(): StoredDeltas {
@@ -63,6 +65,7 @@ function emptyDeltas(): StoredDeltas {
     placements: {},
     payItems: {},
     payEstimates: {},
+    authorizations: {},
   };
 }
 
@@ -142,6 +145,7 @@ export function createLocalDataSource(): DataSource {
       // Overlay placements (upsert by id) and pay item edits (final / authorizations).
       world.placements = overlay(world.placements, deltas.placements, (p) => p.id);
       world.payEstimates = overlay(world.payEstimates, deltas.payEstimates, (e) => e.id);
+      world.authorizations = overlay(world.authorizations, deltas.authorizations, (a) => a.id);
       for (const [key, pi] of Object.entries(deltas.payItems)) {
         const contractId = key.slice(0, key.lastIndexOf(":"));
         const list = world.payItemsByContract.get(contractId);
@@ -162,6 +166,7 @@ export function createLocalDataSource(): DataSource {
         placementDeltas: deltas.placements,
         payItemDeltas: deltas.payItems,
         payEstimateDeltas: deltas.payEstimates,
+        authorizationDeltas: deltas.authorizations,
       };
     },
 
@@ -291,6 +296,14 @@ export function createLocalDataSource(): DataSource {
       maybeFail();
       const d = readDeltas();
       d.payEstimates[estimate.id] = estimate;
+      writeDeltas(d);
+    },
+
+    async persistAuthorization(authorization: Authorization): Promise<void> {
+      await latency();
+      maybeFail();
+      const d = readDeltas();
+      d.authorizations[authorization.id] = authorization;
       writeDeltas(d);
     },
   };
