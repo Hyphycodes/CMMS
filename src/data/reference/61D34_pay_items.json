@@ -1,0 +1,2058 @@
+[
+  {
+    "sourcePage": 4,
+    "code": "20101700",
+    "description": "SUPPLEMENTAL WATERING",
+    "unit": "UNIT",
+    "totalQuantity": 1939,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 4,
+    "code": "20200100",
+    "description": "EARTH EXCAVATION",
+    "unit": "CU YD",
+    "totalQuantity": 41115,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 4,
+    "code": "20201200",
+    "description": "REMOVAL AND DISPOSAL OF UNSUITABLE MATERIAL",
+    "unit": "CU YD",
+    "totalQuantity": 16619,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 4,
+    "code": "20800150",
+    "description": "TRENCH BACKFILL",
+    "unit": "CU YD",
+    "totalQuantity": 7382,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 4,
+    "code": "21001000",
+    "description": "GEOTECHNICAL FABRIC FOR GROUND STABILIZATION",
+    "unit": "SQ YD",
+    "totalQuantity": 8223,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 4,
+    "code": "21101615",
+    "description": "TOPSOIL FURNISH AND PLACE, 4 INCH",
+    "unit": "SQ YD",
+    "totalQuantity": 35904,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 4,
+    "code": "25000400",
+    "description": "NITROGEN FERTILIZER NUTRIENT",
+    "unit": "POUND",
+    "totalQuantity": 445,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 4,
+    "code": "25000500",
+    "description": "PHOSPHORUS FERTILIZER NUTRIENT",
+    "unit": "POUND",
+    "totalQuantity": 445,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 4,
+    "code": "25000600",
+    "description": "POTASSIUM FERTILIZER NUTRIENT",
+    "unit": "POUND",
+    "totalQuantity": 445,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 4,
+    "code": "25100125",
+    "description": "MULCH, METHOD 3",
+    "unit": "ACRE",
+    "totalQuantity": 7.5,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 4,
+    "code": "25200110",
+    "description": "SODDING, SALT TOLERANT",
+    "unit": "SQ YD",
+    "totalQuantity": 35904,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 4,
+    "code": "28000250",
+    "description": "TEMPORARY EROSION CONTROL SEEDING",
+    "unit": "POUND",
+    "totalQuantity": 2225,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 4,
+    "code": "28000305",
+    "description": "TEMPORARY DITCH CHECKS",
+    "unit": "FOOT",
+    "totalQuantity": 920,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 4,
+    "code": "28000400",
+    "description": "PERIMETER EROSION BARRIER",
+    "unit": "FOOT",
+    "totalQuantity": 13069,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 5,
+    "code": "28000510",
+    "description": "INLET FILTERS",
+    "unit": "EACH",
+    "totalQuantity": 222,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 5,
+    "code": "28100107",
+    "description": "STONE RIPRAP, CLASS A4",
+    "unit": "SQ YD",
+    "totalQuantity": 80,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 5,
+    "code": "30300001",
+    "description": "AGGREGATE SUBGRADE IMPROVEMENT",
+    "unit": "CU YD",
+    "totalQuantity": 4111,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 5,
+    "code": "30300112",
+    "description": "AGGREGATE SUBGRADE IMPROVEMENT 12 INCH",
+    "unit": "SQ YD",
+    "totalQuantity": 74534,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 5,
+    "code": "35101600",
+    "description": "AGGREGATE BASE COURSE, TYPE B 4 INCH",
+    "unit": "SQ YD",
+    "totalQuantity": 6212,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 5,
+    "code": "35102400",
+    "description": "AGGREGATE BASE COURSE, TYPE B 12 INCH",
+    "unit": "SQ YD",
+    "totalQuantity": 4680,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 5,
+    "code": "40600290",
+    "description": "BITUMINOUS MATERIALS (TACK COAT)",
+    "unit": "POUND",
+    "totalQuantity": 50043,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 5,
+    "code": "40600400",
+    "description": "MIXTURE FOR CRACKS, JOINTS, AND FLANGEWAYS",
+    "unit": "TON",
+    "totalQuantity": 4,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 5,
+    "code": "40603080",
+    "description": "HOT-MIX ASPHALT BINDER COURSE, IL-19.0, N50",
+    "unit": "TON",
+    "totalQuantity": 2470,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 5,
+    "code": "40603085",
+    "description": "HOT-MIX ASPHALT BINDER COURSE, IL-19.0, N70",
+    "unit": "TON",
+    "totalQuantity": 3445,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 5,
+    "code": "40603200",
+    "description": "POLYMERIZED HOT-MIX ASPHALT BINDER COURSE, IL-4.75, N50",
+    "unit": "TON",
+    "totalQuantity": 805,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 5,
+    "code": "40604060",
+    "description": "HOT-MIX ASPHALT SURFACE COURSE, IL-9.5, MIX D, N50",
+    "unit": "TON",
+    "totalQuantity": 547,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 5,
+    "code": "40604062",
+    "description": "HOT-MIX ASPHALT SURFACE COURSE, IL-9.5, MIX D, N70",
+    "unit": "TON",
+    "totalQuantity": 2504,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 5,
+    "code": "40701951",
+    "description": "HOT-MIX ASPHALT PAVEMENT (FULL-DEPTH), 13 1/2 INCH",
+    "unit": "SQ YD",
+    "totalQuantity": 53617,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 6,
+    "code": "42400200",
+    "description": "PORTLAND CEMENT CONCRETE SIDEWALK 5 INCH",
+    "unit": "SQ FT",
+    "totalQuantity": 49939,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 6,
+    "code": "42400410",
+    "description": "PORTLAND CEMENT CONCRETE SIDEWALK 8 INCH",
+    "unit": "SQ FT",
+    "totalQuantity": 5988,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 6,
+    "code": "42400800",
+    "description": "DETECTABLE WARNINGS",
+    "unit": "SQ FT",
+    "totalQuantity": 226,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 6,
+    "code": "44000100",
+    "description": "PAVEMENT REMOVAL",
+    "unit": "SQ YD",
+    "totalQuantity": 43506,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 6,
+    "code": "44000160",
+    "description": "HOT-MIX ASPHALT SURFACE REMOVAL, 2 3/4 INCH",
+    "unit": "SQ YD",
+    "totalQuantity": 19159,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 6,
+    "code": "44000200",
+    "description": "DRIVEWAY PAVEMENT REMOVAL",
+    "unit": "SQ YD",
+    "totalQuantity": 8842,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 6,
+    "code": "44000500",
+    "description": "COMBINATION CURB AND GUTTER REMOVAL",
+    "unit": "FOOT",
+    "totalQuantity": 17823,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 6,
+    "code": "44000600",
+    "description": "SIDEWALK REMOVAL",
+    "unit": "SQ FT",
+    "totalQuantity": 6091,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 6,
+    "code": "44003100",
+    "description": "MEDIAN REMOVAL",
+    "unit": "SQ FT",
+    "totalQuantity": 2403,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 6,
+    "code": "44201796",
+    "description": "CLASS D PATCHES, TYPE IV, 12 INCH",
+    "unit": "SQ YD",
+    "totalQuantity": 421,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 6,
+    "code": "48203041",
+    "description": "HOT-MIX ASPHALT SHOULDERS, 11 INCH",
+    "unit": "SQ YD",
+    "totalQuantity": 194,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 6,
+    "code": "50200100",
+    "description": "STRUCTURE EXCAVATION",
+    "unit": "CU YD",
+    "totalQuantity": 1831,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 6,
+    "code": "50300225",
+    "description": "CONCRETE STRUCTURES",
+    "unit": "CU YD",
+    "totalQuantity": 309.5,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 6,
+    "code": "50800205",
+    "description": "REINFORCEMENT BARS, EPOXY COATED",
+    "unit": "POUND",
+    "totalQuantity": 28030,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 7,
+    "code": "52200020",
+    "description": "TEMPORARY SOIL RETENTION SYSTEM",
+    "unit": "SQ FT",
+    "totalQuantity": 1584,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 7,
+    "code": "52200800",
+    "description": "SEGMENTAL CONCRETE BLOCK WALL",
+    "unit": "SQ FT",
+    "totalQuantity": 4370,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 7,
+    "code": "54213657",
+    "description": "PRECAST REINFORCED CONCRETE FLARED END SECTIONS 12 INCH",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 7,
+    "code": "54213669",
+    "description": "PRECAST REINFORCED CONCRETE FLARED END SECTIONS 24 INCH",
+    "unit": "EACH",
+    "totalQuantity": 2,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 7,
+    "code": "5424A030",
+    "description": "PIPE CULVERTS, CLASS A, TYPE 4 30 INCH (TEMPORARY)",
+    "unit": "FOOT",
+    "totalQuantity": 70,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 7,
+    "code": "54248510",
+    "description": "CONCRETE COLLAR",
+    "unit": "CU YD",
+    "totalQuantity": 2,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 7,
+    "code": "550A0050",
+    "description": "STORM SEWERS, CLASS A, TYPE 1 12 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 1291,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 7,
+    "code": "550A0070",
+    "description": "STORM SEWERS, CLASS A, TYPE 1 15 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 284,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 7,
+    "code": "550A0090",
+    "description": "STORM SEWERS, CLASS A, TYPE 1 18 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 937,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 7,
+    "code": "550A0120",
+    "description": "STORM SEWERS, CLASS A, TYPE 1 24 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 586,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 7,
+    "code": "550A0140",
+    "description": "STORM SEWERS, CLASS A, TYPE 1 30 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 30,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 7,
+    "code": "550A0200",
+    "description": "STORM SEWERS, CLASS A, TYPE 1 54 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 580,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 7,
+    "code": "550A0340",
+    "description": "STORM SEWERS, CLASS A, TYPE 2 12 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 5383,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 8,
+    "code": "550A0360",
+    "description": "STORM SEWERS, CLASS A, TYPE 2 15 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 394,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 8,
+    "code": "550A0380",
+    "description": "STORM SEWERS, CLASS A, TYPE 2 18 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 953,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 8,
+    "code": "550A0410",
+    "description": "STORM SEWERS, CLASS A, TYPE 2 24 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 1003,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 8,
+    "code": "550A0430",
+    "description": "STORM SEWERS, CLASS A, TYPE 2 30 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 1360,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 8,
+    "code": "550A0450",
+    "description": "STORM SEWERS, CLASS A, TYPE 2 36 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 690,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 8,
+    "code": "550A0470",
+    "description": "STORM SEWERS, CLASS A, TYPE 2 42 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 655,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 8,
+    "code": "550A1050",
+    "description": "STORM SEWERS, CLASS A, TYPE 4 36 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 109,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 8,
+    "code": "550A4100",
+    "description": "STORM SEWERS, CLASS A, TYPE 1 EQUIVALENT ROUND-SIZE 24 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 247,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 8,
+    "code": "550A4500",
+    "description": "STORM SEWERS, CLASS A, TYPE 1 EQUIVALENT ROUND-SIZE 36 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 417,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 8,
+    "code": "55100300",
+    "description": "STORM SEWER REMOVAL 8 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 52,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 8,
+    "code": "55100400",
+    "description": "STORM SEWER REMOVAL 10 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 38,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 8,
+    "code": "55100500",
+    "description": "STORM SEWER REMOVAL 12 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 3084,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 8,
+    "code": "55100700",
+    "description": "STORM SEWER REMOVAL 15 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 1532,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 8,
+    "code": "55100900",
+    "description": "STORM SEWER REMOVAL 18 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 1488,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 9,
+    "code": "55101200",
+    "description": "STORM SEWER REMOVAL 24 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 734,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 9,
+    "code": "55101400",
+    "description": "STORM SEWER REMOVAL 30 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 917,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 9,
+    "code": "55101600",
+    "description": "STORM SEWER REMOVAL 36 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 809,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 9,
+    "code": "58600101",
+    "description": "GRANULAR BACKFILL FOR STRUCTURES",
+    "unit": "CU YD",
+    "totalQuantity": 281,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 9,
+    "code": "59100100",
+    "description": "GEOCOMPOSITE WALL DRAIN",
+    "unit": "SQ YD",
+    "totalQuantity": 211,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 9,
+    "code": "59300100",
+    "description": "CONTROLLED LOW-STRENGTH MATERIAL",
+    "unit": "CU YD",
+    "totalQuantity": 7126,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 9,
+    "code": "60108204",
+    "description": "PIPE UNDERDRAINS, TYPE 2, 4 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 4159,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 9,
+    "code": "60146304",
+    "description": "PIPE UNDERDRAINS FOR STRUCTURES 4 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 1049,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 9,
+    "code": "60201110",
+    "description": "CATCH BASINS, TYPE A, 4-DIAMETER, TYPE 11V FRAME AND GRATE",
+    "unit": "EACH",
+    "totalQuantity": 21,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 9,
+    "code": "60201340",
+    "description": "CATCH BASINS, TYPE A, 4-DIAMETER, TYPE 24 FRAME AND GRATE",
+    "unit": "EACH",
+    "totalQuantity": 53,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 9,
+    "code": "60207605",
+    "description": "CATCH BASINS, TYPE C, TYPE 8 GRATE",
+    "unit": "EACH",
+    "totalQuantity": 21,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 9,
+    "code": "60208240",
+    "description": "CATCH BASINS, TYPE C, TYPE 24 FRAME AND GRATE",
+    "unit": "EACH",
+    "totalQuantity": 32,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 9,
+    "code": "60218300",
+    "description": "MANHOLES, TYPE A, 4-DIAMETER, TYPE 1 FRAME, OPEN LID",
+    "unit": "EACH",
+    "totalQuantity": 3,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 9,
+    "code": "60218400",
+    "description": "MANHOLES, TYPE A, 4-DIAMETER, TYPE 1 FRAME, CLOSED LID",
+    "unit": "EACH",
+    "totalQuantity": 5,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 10,
+    "code": "60221100",
+    "description": "MANHOLES, TYPE A, 5-DIAMETER, TYPE 1 FRAME, CLOSED LID",
+    "unit": "EACH",
+    "totalQuantity": 20,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 10,
+    "code": "60223800",
+    "description": "MANHOLES, TYPE A, 6-DIAMETER, TYPE 1 FRAME, CLOSED LID",
+    "unit": "EACH",
+    "totalQuantity": 15,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 10,
+    "code": "60224446",
+    "description": "MANHOLES, TYPE A, 7-DIAMETER, TYPE 1 FRAME, CLOSED LID",
+    "unit": "EACH",
+    "totalQuantity": 4,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 10,
+    "code": "60224459",
+    "description": "MANHOLES, TYPE A, 8-DIAMETER, TYPE 1 FRAME, CLOSED LID",
+    "unit": "EACH",
+    "totalQuantity": 5,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 10,
+    "code": "60224469",
+    "description": "MANHOLES, TYPE A, 9-DIAMETER, TYPE 1 FRAME, CLOSED LID",
+    "unit": "EACH",
+    "totalQuantity": 8,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 10,
+    "code": "60224470",
+    "description": "MANHOLES, TYPE A, 9-DIAMETER, TYPE 1 FRAME, OPEN LID",
+    "unit": "EACH",
+    "totalQuantity": 2,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 10,
+    "code": "60224494",
+    "description": "MANHOLES, TYPE A, 10-DIAMETER, TYPE 1 FRAME, OPEN LID",
+    "unit": "EACH",
+    "totalQuantity": 4,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 10,
+    "code": "60236825",
+    "description": "INLETS, TYPE A, TYPE 11V FRAME AND GRATE",
+    "unit": "EACH",
+    "totalQuantity": 8,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 10,
+    "code": "60237470",
+    "description": "INLETS, TYPE A, TYPE 24 FRAME AND GRATE",
+    "unit": "EACH",
+    "totalQuantity": 47,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 10,
+    "code": "60240301",
+    "description": "INLETS, TYPE B, TYPE 8 GRATE",
+    "unit": "EACH",
+    "totalQuantity": 3,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 10,
+    "code": "60253100",
+    "description": "CATCH BASINS TO BE RECONSTRUCTED WITH NEW TYPE 1 FRAME, CLOSED LID",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 10,
+    "code": "60300105",
+    "description": "FRAMES AND GRATES TO BE ADJUSTED",
+    "unit": "EACH",
+    "totalQuantity": 3,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 10,
+    "code": "60300305",
+    "description": "FRAMES AND LIDS TO BE ADJUSTED",
+    "unit": "EACH",
+    "totalQuantity": 3,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 10,
+    "code": "60500040",
+    "description": "REMOVING MANHOLES",
+    "unit": "EACH",
+    "totalQuantity": 18,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 11,
+    "code": "60500050",
+    "description": "REMOVING CATCH BASINS",
+    "unit": "EACH",
+    "totalQuantity": 23,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 11,
+    "code": "60500060",
+    "description": "REMOVING INLETS",
+    "unit": "EACH",
+    "totalQuantity": 51,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 11,
+    "code": "60603800",
+    "description": "COMBINATION CONCRETE CURB AND GUTTER, TYPE B-6.12",
+    "unit": "FOOT",
+    "totalQuantity": 5672,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 11,
+    "code": "60605000",
+    "description": "COMBINATION CONCRETE CURB AND GUTTER, TYPE B-6.24",
+    "unit": "FOOT",
+    "totalQuantity": 19215,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 11,
+    "code": "60608300",
+    "description": "COMBINATION CONCRETE CURB AND GUTTER, TYPE M2.12",
+    "unit": "FOOT",
+    "totalQuantity": 4660,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 11,
+    "code": "60618300",
+    "description": "CONCRETE MEDIAN SURFACE, 4 INCH",
+    "unit": "SQ FT",
+    "totalQuantity": 17940,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 11,
+    "code": "60618740",
+    "description": "CONCRETE MEDIAN, TYPE M-2.12",
+    "unit": "SQ FT",
+    "totalQuantity": 4149,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 11,
+    "code": "60619600",
+    "description": "CONCRETE MEDIAN, TYPE SB-6.12",
+    "unit": "SQ FT",
+    "totalQuantity": 13697,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 11,
+    "code": "60624600",
+    "description": "CORRUGATED MEDIAN",
+    "unit": "SQ FT",
+    "totalQuantity": 1912,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 11,
+    "code": "63000001",
+    "description": "STEEL PLATE BEAM GUARDRAIL, TYPE A, 6 FOOT POSTS",
+    "unit": "FOOT",
+    "totalQuantity": 416,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 11,
+    "code": "63100045",
+    "description": "TRAFFIC BARRIER TERMINAL, TYPE 2",
+    "unit": "EACH",
+    "totalQuantity": 6,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 11,
+    "code": "63100167",
+    "description": "TRAFFIC BARRIER TERMINAL, TYPE 1 (SPECIAL) TANGENT",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 11,
+    "code": "63200310",
+    "description": "GUARDRAIL REMOVAL",
+    "unit": "FOOT",
+    "totalQuantity": 39,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 12,
+    "code": "66900200",
+    "description": "NON-SPECIAL WASTE DISPOSAL",
+    "unit": "CU YD",
+    "totalQuantity": 9730,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 12,
+    "code": "66900205",
+    "description": "SPECIAL WASTE DISPOSAL",
+    "unit": "CU YD",
+    "totalQuantity": 100,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 12,
+    "code": "66900210",
+    "description": "HAZARDOUS WASTE DISPOSAL",
+    "unit": "CU YD",
+    "totalQuantity": 100,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 12,
+    "code": "66900400",
+    "description": "SPECIAL WASTE GROUNDWATER DISPOSAL",
+    "unit": "GALLON",
+    "totalQuantity": 1500,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 12,
+    "code": "66900425",
+    "description": "HAZARDOUS WASTE GROUNDWATER DISPOSAL",
+    "unit": "GALLON",
+    "totalQuantity": 100,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 12,
+    "code": "66900530",
+    "description": "SOIL DISPOSAL ANALYSIS",
+    "unit": "EACH",
+    "totalQuantity": 12,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 12,
+    "code": "66900575",
+    "description": "VOCS GROUNDWATER ANALYSIS",
+    "unit": "EACH",
+    "totalQuantity": 5,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 12,
+    "code": "66901001",
+    "description": "REGULATED SUBSTANCES PRE-CONSTRUCTION PLAN",
+    "unit": "L SUM",
+    "totalQuantity": 1,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 12,
+    "code": "66901003",
+    "description": "REGULATED SUBSTANCES FINAL CONSTRUCTION REPORT",
+    "unit": "L SUM",
+    "totalQuantity": 1,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 12,
+    "code": "66901006",
+    "description": "REGULATED SUBSTANCES MONITORING",
+    "unit": "CAL DA",
+    "totalQuantity": 350,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 12,
+    "code": "67100100",
+    "description": "MOBILIZATION",
+    "unit": "L SUM",
+    "totalQuantity": 1,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 12,
+    "code": "70103815",
+    "description": "TRAFFIC CONTROL SURVEILLANCE",
+    "unit": "CAL DA",
+    "totalQuantity": 580,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 12,
+    "code": "70107025",
+    "description": "CHANGEABLE MESSAGE SIGN",
+    "unit": "CAL DA",
+    "totalQuantity": 76,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 12,
+    "code": "70300100",
+    "description": "SHORT TERM PAVEMENT MARKING",
+    "unit": "FOOT",
+    "totalQuantity": 2791,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 13,
+    "code": "70300150",
+    "description": "SHORT TERM PAVEMENT MARKING REMOVAL",
+    "unit": "SQ FT",
+    "totalQuantity": 2791,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 13,
+    "code": "70300211",
+    "description": "TEMPORARY PAVEMENT MARKING LETTERS AND SYMBOLS - PAINT",
+    "unit": "SQ FT",
+    "totalQuantity": 4115,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 13,
+    "code": "70300221",
+    "description": "TEMPORARY PAVEMENT MARKING - LINE 4 INCH - PAINT",
+    "unit": "FOOT",
+    "totalQuantity": 166514,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 13,
+    "code": "70300241",
+    "description": "TEMPORARY PAVEMENT MARKING - LINE 6 INCH - PAINT",
+    "unit": "FOOT",
+    "totalQuantity": 15126,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 13,
+    "code": "70300261",
+    "description": "TEMPORARY PAVEMENT MARKING - LINE 12 INCH - PAINT",
+    "unit": "FOOT",
+    "totalQuantity": 8579,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 13,
+    "code": "70307100",
+    "description": "TEMPORARY PAVEMENT MARKING LETTERS AND SYMBOLS - TYPE IV TAPE",
+    "unit": "SQ FT",
+    "totalQuantity": 949,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 13,
+    "code": "70307120",
+    "description": "TEMPORARY PAVEMENT MARKING - LINE 4 INCH - TYPE IV TAPE",
+    "unit": "FOOT",
+    "totalQuantity": 64526,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 13,
+    "code": "70307130",
+    "description": "TEMPORARY PAVEMENT MARKING - LINE 6 INCH - TYPE IV TAPE",
+    "unit": "FOOT",
+    "totalQuantity": 2865,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 13,
+    "code": "70307160",
+    "description": "TEMPORARY PAVEMENT MARKING - LINE 12 INCH - TYPE IV TAPE",
+    "unit": "FOOT",
+    "totalQuantity": 3803,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 13,
+    "code": "72000100",
+    "description": "SIGN PANEL - TYPE 1",
+    "unit": "SQ FT",
+    "totalQuantity": 452,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 13,
+    "code": "72400100",
+    "description": "REMOVE SIGN PANEL ASSEMBLY - TYPE A",
+    "unit": "EACH",
+    "totalQuantity": 20,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 13,
+    "code": "72400200",
+    "description": "REMOVE SIGN PANEL ASSEMBLY - TYPE B",
+    "unit": "EACH",
+    "totalQuantity": 3,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 13,
+    "code": "72400500",
+    "description": "RELOCATE SIGN PANEL ASSEMBLY - TYPE A",
+    "unit": "EACH",
+    "totalQuantity": 8,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 13,
+    "code": "72800100",
+    "description": "TELESCOPING STEEL SIGN SUPPORT",
+    "unit": "FOOT",
+    "totalQuantity": 854,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 14,
+    "code": "78000100",
+    "description": "THERMOPLASTIC PAVEMENT MARKING - LETTERS AND SYMBOLS",
+    "unit": "SQ FT",
+    "totalQuantity": 2292,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 14,
+    "code": "78000200",
+    "description": "THERMOPLASTIC PAVEMENT MARKING - LINE 4 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 63159,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 14,
+    "code": "78000400",
+    "description": "THERMOPLASTIC PAVEMENT MARKING - LINE 6 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 11407,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 14,
+    "code": "78000500",
+    "description": "THERMOPLASTIC PAVEMENT MARKING - LINE 8 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 970,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 14,
+    "code": "78000600",
+    "description": "THERMOPLASTIC PAVEMENT MARKING - LINE 12 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 2920,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 14,
+    "code": "78000650",
+    "description": "THERMOPLASTIC PAVEMENT MARKING - LINE 24 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 805,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 14,
+    "code": "78008200",
+    "description": "POLYUREA PAVEMENT MARKING TYPE I - LETTERS AND SYMBOLS",
+    "unit": "SQ FT",
+    "totalQuantity": 3600,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 14,
+    "code": "78100100",
+    "description": "RAISED REFLECTIVE PAVEMENT MARKER",
+    "unit": "EACH",
+    "totalQuantity": 1178,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 14,
+    "code": "78300201",
+    "description": "PAVEMENT MARKING REMOVAL - GRINDING",
+    "unit": "SQ FT",
+    "totalQuantity": 90344,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 14,
+    "code": "78300202",
+    "description": "PAVEMENT MARKING REMOVAL - WATER BLASTING",
+    "unit": "SQ FT",
+    "totalQuantity": 20685,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 14,
+    "code": "80400200",
+    "description": "ELECTRIC UTILITY SERVICE CONNECTION",
+    "unit": "L SUM",
+    "totalQuantity": 1,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 14,
+    "code": "80500010",
+    "description": "SERVICE INSTALLATION - GROUND MOUNTED",
+    "unit": "EACH",
+    "totalQuantity": 3,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 14,
+    "code": "81028200",
+    "description": "UNDERGROUND CONDUIT, GALVANIZED STEEL, 2 INCH DIA.",
+    "unit": "FOOT",
+    "totalQuantity": 6562,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 14,
+    "code": "81028220",
+    "description": "UNDERGROUND CONDUIT, GALVANIZED STEEL, 3 INCH DIA.",
+    "unit": "FOOT",
+    "totalQuantity": 533,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 15,
+    "code": "81028240",
+    "description": "UNDERGROUND CONDUIT, GALVANIZED STEEL, 4 INCH DIA.",
+    "unit": "FOOT",
+    "totalQuantity": 2488,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 15,
+    "code": "81400100",
+    "description": "HANDHOLE",
+    "unit": "EACH",
+    "totalQuantity": 23,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 15,
+    "code": "81400200",
+    "description": "HEAVY-DUTY HANDHOLE",
+    "unit": "EACH",
+    "totalQuantity": 10,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 15,
+    "code": "81400300",
+    "description": "DOUBLE HANDHOLE",
+    "unit": "EACH",
+    "totalQuantity": 7,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 15,
+    "code": "81603010",
+    "description": "UNIT DUCT, 600V, 2-1C NO.10, 1/C NO.10 GROUND, (XLP-TYPE USE), 3/4 INCH DIA. POLYETHYLENE",
+    "unit": "FOOT",
+    "totalQuantity": 363,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 15,
+    "code": "81603022",
+    "description": "UNIT DUCT, 600V, 4-1C NO.10, 1/C NO.10 GROUND, (XLP-TYPE USE), 3/4 INCH DIA. POLYETHYLENE",
+    "unit": "FOOT",
+    "totalQuantity": 1521,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 15,
+    "code": "81702417",
+    "description": "ELECTRIC CABLE IN CONDUIT, 600V (XLP-TYPE USE) 3-1/C NO. 6, 1/C NO. 6 GROUND",
+    "unit": "FOOT",
+    "totalQuantity": 114,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 15,
+    "code": "81702500",
+    "description": "ELECTRIC CABLE IN CONDUIT, 600V (XLP-TYPE USE) 4/C NO. 6",
+    "unit": "FOOT",
+    "totalQuantity": 122,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 15,
+    "code": "82110009",
+    "description": "LUMINAIRE, LED, ROADWAY, OUTPUT DESIGNATION I",
+    "unit": "EACH",
+    "totalQuantity": 20,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 15,
+    "code": "83060440",
+    "description": "LIGHT POLE, GALVANIZED STEEL, 45 FT. MH., 12 FT. MAST ARM",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 15,
+    "code": "84200600",
+    "description": "REMOVAL OF LIGHTING UNIT, NO SALVAGE",
+    "unit": "EACH",
+    "totalQuantity": 2,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 15,
+    "code": "84200804",
+    "description": "REMOVAL OF POLE FOUNDATION",
+    "unit": "EACH",
+    "totalQuantity": 2,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 15,
+    "code": "85000200",
+    "description": "MAINTENANCE OF EXISTING TRAFFIC SIGNAL INSTALLATION",
+    "unit": "EACH",
+    "totalQuantity": 2,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 15,
+    "code": "86000100",
+    "description": "MASTER CONTROLLER",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 16,
+    "code": "86400100",
+    "description": "TRANSCEIVER - FIBER OPTIC",
+    "unit": "EACH",
+    "totalQuantity": 3,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 16,
+    "code": "87300925",
+    "description": "ELECTRIC CABLE IN CONDUIT, TRACER, NO. 14 1C",
+    "unit": "FOOT",
+    "totalQuantity": 4668,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 16,
+    "code": "87301215",
+    "description": "ELECTRIC CABLE IN CONDUIT, SIGNAL NO. 14 2C",
+    "unit": "FOOT",
+    "totalQuantity": 1516,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 16,
+    "code": "87301225",
+    "description": "ELECTRIC CABLE IN CONDUIT, SIGNAL NO. 14 3C",
+    "unit": "FOOT",
+    "totalQuantity": 5892,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 16,
+    "code": "87301245",
+    "description": "ELECTRIC CABLE IN CONDUIT, SIGNAL NO. 14 5C",
+    "unit": "FOOT",
+    "totalQuantity": 12028,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 16,
+    "code": "87301255",
+    "description": "ELECTRIC CABLE IN CONDUIT, SIGNAL NO. 14 7C",
+    "unit": "FOOT",
+    "totalQuantity": 3121,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 16,
+    "code": "87301305",
+    "description": "ELECTRIC CABLE IN CONDUIT, LEAD-IN, NO. 14 1 PAIR",
+    "unit": "FOOT",
+    "totalQuantity": 12853,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 16,
+    "code": "87301900",
+    "description": "ELECTRIC CABLE IN CONDUIT, EQUIPMENT GROUNDING CONDUCTOR, NO. 6 1C",
+    "unit": "FOOT",
+    "totalQuantity": 1954,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 16,
+    "code": "87501200",
+    "description": "TRAFFIC SIGNAL POST, 16 FT.",
+    "unit": "EACH",
+    "totalQuantity": 5,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 16,
+    "code": "87700180",
+    "description": "STEEL MAST ARM ASSEMBLY AND POLE, 28 FT.",
+    "unit": "EACH",
+    "totalQuantity": 2,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 16,
+    "code": "87700230",
+    "description": "STEEL MAST ARM ASSEMBLY AND POLE, 38 FT.",
+    "unit": "EACH",
+    "totalQuantity": 4,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 16,
+    "code": "87702870",
+    "description": "STEEL COMBINATION MAST ARM ASSEMBLY AND POLE 28 FT.",
+    "unit": "EACH",
+    "totalQuantity": 4,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 16,
+    "code": "87702930",
+    "description": "STEEL COMBINATION MAST ARM ASSEMBLY AND POLE 40 FT.",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 16,
+    "code": "87702960",
+    "description": "STEEL COMBINATION MAST ARM ASSEMBLY AND POLE 46 FT.",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 17,
+    "code": "87702985",
+    "description": "STEEL COMBINATION MAST ARM ASSEMBLY AND POLE 52 FT.",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 17,
+    "code": "87800100",
+    "description": "CONCRETE FOUNDATION, TYPE A",
+    "unit": "FOOT",
+    "totalQuantity": 64,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 17,
+    "code": "87800150",
+    "description": "CONCRETE FOUNDATION, TYPE C",
+    "unit": "FOOT",
+    "totalQuantity": 12,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 17,
+    "code": "87800400",
+    "description": "CONCRETE FOUNDATION, TYPE E 30-INCH DIAMETER",
+    "unit": "FOOT",
+    "totalQuantity": 30,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 17,
+    "code": "87800415",
+    "description": "CONCRETE FOUNDATION, TYPE E 36-INCH DIAMETER",
+    "unit": "FOOT",
+    "totalQuantity": 131,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 17,
+    "code": "87800420",
+    "description": "CONCRETE FOUNDATION, TYPE E 42-INCH DIAMETER",
+    "unit": "FOOT",
+    "totalQuantity": 84,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 17,
+    "code": "87900200",
+    "description": "DRILL EXISTING HANDHOLE",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 17,
+    "code": "88030020",
+    "description": "SIGNAL HEAD, LED, 1-FACE, 3-SECTION, MAST-ARM MOUNTED",
+    "unit": "EACH",
+    "totalQuantity": 34,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 17,
+    "code": "88030050",
+    "description": "SIGNAL HEAD, LED, 1-FACE, 3-SECTION, BRACKET MOUNTED",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 17,
+    "code": "88030100",
+    "description": "SIGNAL HEAD, LED, 1-FACE, 5-SECTION, BRACKET MOUNTED",
+    "unit": "EACH",
+    "totalQuantity": 8,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 17,
+    "code": "88030110",
+    "description": "SIGNAL HEAD, LED, 1-FACE, 5-SECTION, MAST-ARM MOUNTED",
+    "unit": "EACH",
+    "totalQuantity": 6,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 17,
+    "code": "88102717",
+    "description": "PEDESTRIAN SIGNAL HEAD, LED, 1-FACE, BRACKET MOUNTED WITH COUNTDOWN TIMER",
+    "unit": "EACH",
+    "totalQuantity": 14,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 17,
+    "code": "88200210",
+    "description": "TRAFFIC SIGNAL BACKPLATE, LOUVERED, ALUMINUM",
+    "unit": "EACH",
+    "totalQuantity": 38,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 17,
+    "code": "88500100",
+    "description": "INDUCTIVE LOOP DETECTOR",
+    "unit": "EACH",
+    "totalQuantity": 63,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 18,
+    "code": "88600100",
+    "description": "DETECTOR LOOP, TYPE I",
+    "unit": "FOOT",
+    "totalQuantity": 3022,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 18,
+    "code": "88700200",
+    "description": "LIGHT DETECTOR",
+    "unit": "EACH",
+    "totalQuantity": 9,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 18,
+    "code": "88700300",
+    "description": "LIGHT DETECTOR AMPLIFIER",
+    "unit": "EACH",
+    "totalQuantity": 3,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 18,
+    "code": "89000100",
+    "description": "TEMPORARY TRAFFIC SIGNAL INSTALLATION",
+    "unit": "EACH",
+    "totalQuantity": 5,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 18,
+    "code": "89501400",
+    "description": "RELOCATE EXISTING EMERGENCY VEHICLE PRIORITY SYSTEM, DETECTOR UNIT",
+    "unit": "EACH",
+    "totalQuantity": 2,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 18,
+    "code": "89502375",
+    "description": "REMOVE EXISTING TRAFFIC SIGNAL EQUIPMENT",
+    "unit": "EACH",
+    "totalQuantity": 4,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 18,
+    "code": "89502380",
+    "description": "REMOVE EXISTING HANDHOLE",
+    "unit": "EACH",
+    "totalQuantity": 27,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 18,
+    "code": "89502382",
+    "description": "REMOVE EXISTING DOUBLE HANDHOLE",
+    "unit": "EACH",
+    "totalQuantity": 5,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 18,
+    "code": "89502385",
+    "description": "REMOVE EXISTING CONCRETE FOUNDATION",
+    "unit": "EACH",
+    "totalQuantity": 32,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 18,
+    "code": "LR443200",
+    "description": "STRIP REFLECTIVE CRACK CONTROL TREATMENT",
+    "unit": "FOOT",
+    "totalQuantity": 4809,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 18,
+    "code": "X0324085",
+    "description": "EMERGENCY VEHICLE PRIORITY SYSTEM LINE SENSOR CABLE, NO. 20 3/C",
+    "unit": "FOOT",
+    "totalQuantity": 3077,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 18,
+    "code": "X1400107",
+    "description": "FULL-ACTUATED CONTROLLER AND TYPE SUPER P CABINET",
+    "unit": "EACH",
+    "totalQuantity": 3,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 18,
+    "code": "X1400353",
+    "description": "STEEL COMBINATION MAST ARM ASSEMBLY AND POLE 48 FT. WITH DUAL 15 FT. LIGHTING ARM AT 40 FT. MOUNTING HEIGHT",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 19,
+    "code": "X1400355",
+    "description": "STEEL COMBINATION MAST ARM ASSEMBLY AND POLE 54 FT. WITH DUAL 15 FT. LIGHTING ARM AT 40 FT. MOUNTING HEIGHT",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 19,
+    "code": "X1400367",
+    "description": "PEDESTRIAN SIGNAL POST, 10 FT.",
+    "unit": "EACH",
+    "totalQuantity": 3,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 19,
+    "code": "X1400378",
+    "description": "PEDESTRIAN SIGNAL POST, 5 FT.",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 19,
+    "code": "X1400506",
+    "description": "STEEL COMBINATION MAST ARM ASSEMBLY AND POLE 64 FT. WITH DUAL 15 FT. LIGHTING ARM AT 40 FT. MOUNTING HEIGHT",
+    "unit": "EACH",
+    "totalQuantity": 2,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 19,
+    "code": "X4021000",
+    "description": "TEMPORARY ACCESS (PRIVATE ENTRANCE)",
+    "unit": "EACH",
+    "totalQuantity": 14,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 19,
+    "code": "X4022000",
+    "description": "TEMPORARY ACCESS (COMMERCIAL ENTRANCE)",
+    "unit": "EACH",
+    "totalQuantity": 34,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 19,
+    "code": "X4024100",
+    "description": "TEMPORARY ACCESS (WINTERIZE)",
+    "unit": "SQ YD",
+    "totalQuantity": 4680,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 19,
+    "code": "X5030282",
+    "description": "FORM LINER TEXTURED SURFACE (SPECIAL)",
+    "unit": "SQ FT",
+    "totalQuantity": 2354,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 19,
+    "code": "X5220102",
+    "description": "RETAINING WALL REMOVAL",
+    "unit": "FOOT",
+    "totalQuantity": 527,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 19,
+    "code": "X5537800",
+    "description": "STORM SEWERS TO BE CLEANED 12 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 75,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 19,
+    "code": "X5538200",
+    "description": "STORM SEWERS TO BE CLEANED 24 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 152,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 19,
+    "code": "X5538400",
+    "description": "STORM SEWERS TO BE CLEANED 30 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 52,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 19,
+    "code": "X5538600",
+    "description": "STORM SEWERS TO BE CLEANED 36 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 155,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 19,
+    "code": "X6020094",
+    "description": "MANHOLES, TYPE A, 6-DIAMETER, TYPE 1 FRAME, CLOSED LID, RESTRICTOR PLATE",
+    "unit": "EACH",
+    "totalQuantity": 4,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 20,
+    "code": "X6020102",
+    "description": "MANHOLES, TYPE A, 9-DIAMETER, TYPE 1 FRAME, CLOSED LID, RESTRICTOR PLATE",
+    "unit": "EACH",
+    "totalQuantity": 5,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 20,
+    "code": "X6060714",
+    "description": "CONCRETE MEDIAN (SPECIAL)",
+    "unit": "SQ FT",
+    "totalQuantity": 14513,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 20,
+    "code": "X6066010",
+    "description": "HOT-MIX ASPHALT MEDIAN",
+    "unit": "SQ FT",
+    "totalQuantity": 37572,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 20,
+    "code": "X6640525",
+    "description": "CHAIN LINK FENCE, 4 FT ATTACHED TO STRUCTURE",
+    "unit": "FOOT",
+    "totalQuantity": 508,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 20,
+    "code": "X6700410",
+    "description": "ENGINEER'S FIELD OFFICE, TYPE A (SPECIAL)",
+    "unit": "CAL MO",
+    "totalQuantity": 19,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 20,
+    "code": "X7010216",
+    "description": "TRAFFIC CONTROL AND PROTECTION, (SPECIAL)",
+    "unit": "L SUM",
+    "totalQuantity": 1,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 20,
+    "code": "X8250091",
+    "description": "COMBINATION LIGHTING CONTROLLER",
+    "unit": "EACH",
+    "totalQuantity": 3,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 20,
+    "code": "X8620200",
+    "description": "UNINTERRUPTABLE POWER SUPPLY (SPECIAL)",
+    "unit": "EACH",
+    "totalQuantity": 3,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 20,
+    "code": "X8710024",
+    "description": "FIBER OPTIC CABLE IN CONDUIT, NO. 62.5/125, MM12F SM24F",
+    "unit": "FOOT",
+    "totalQuantity": 4668,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 20,
+    "code": "X8760200",
+    "description": "ACCESSIBLE PEDESTRIAN SIGNALS",
+    "unit": "EACH",
+    "totalQuantity": 16,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 20,
+    "code": "X8770142",
+    "description": "STEEL COMBINATION MAST ARM ASSEMBLY AND POLE 50 FT. (SPECIAL)",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 20,
+    "code": "X8770151",
+    "description": "STEEL COMBINATION MAST ARM ASSEMBLY AND POLE 55 FT. (SPECIAL)",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 20,
+    "code": "X8770156",
+    "description": "STEEL COMBINATION MAST ARM ASSEMBLY AND POLE, 56 FT. (SPECIAL)",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 20,
+    "code": "X8775042",
+    "description": "STEEL COMBINATION MAST ARM ASSEMBLY AND POLE, 42 FT WITH DUAL 15 FT LIGHTING ARMS AT 40 FT MOUNTING HEIGHT",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 20,
+    "code": "X8780012",
+    "description": "CONCRETE FOUNDATION, TYPE A 12-INCH DIAMETER",
+    "unit": "FOOT",
+    "totalQuantity": 8,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 20,
+    "code": "X8900100",
+    "description": "TEMPORARY TRAFFIC SIGNAL INSTALLATION (SPECIAL)",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 21,
+    "code": "XX008117",
+    "description": "STORMWATER TREATMENT UNIT",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 21,
+    "code": "XX009608",
+    "description": "UNDERGROUND STORAGE CHAMBER",
+    "unit": "EACH",
+    "totalQuantity": 2,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 21,
+    "code": "XX009609",
+    "description": "STORMWATER TREATMENT UNIT, TYPE 2",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 21,
+    "code": "XX009610",
+    "description": "STORMWATER TREATMENT UNIT, TYPE 3",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 21,
+    "code": "XX009611",
+    "description": "STORMWATER TREATMENT UNIT, TYPE 4",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 21,
+    "code": "XX009612",
+    "description": "STORMWATER TREATMENT UNIT, TYPE 5",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 21,
+    "code": "Z0013798",
+    "description": "CONSTRUCTION LAYOUT",
+    "unit": "L SUM",
+    "totalQuantity": 1,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 21,
+    "code": "Z0018500",
+    "description": "DRAINAGE STRUCTURES TO BE CLEANED",
+    "unit": "EACH",
+    "totalQuantity": 15,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 21,
+    "code": "Z0030850",
+    "description": "TEMPORARY INFORMATION SIGNING",
+    "unit": "SQ FT",
+    "totalQuantity": 96,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 21,
+    "code": "Z0033056",
+    "description": "OPTIMIZE TRAFFIC SIGNAL SYSTEM",
+    "unit": "EACH",
+    "totalQuantity": 1,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 21,
+    "code": "Z0056608",
+    "description": "STORM SEWER (WATER MAIN REQUIREMENTS) 12 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 50,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 21,
+    "code": "Z0056614",
+    "description": "STORM SEWER (WATER MAIN REQUIREMENTS) 21 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 300,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 21,
+    "code": "Z0056616",
+    "description": "STORM SEWER (WATER MAIN REQUIREMENTS) 24 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 203,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 21,
+    "code": "Z0056644",
+    "description": "STORM SEWERS, TYPE 1, WATER MAIN QUALITY PIPE, 8 INCH",
+    "unit": "FOOT",
+    "totalQuantity": 330,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 22,
+    "code": "Z0062456",
+    "description": "TEMPORARY PAVEMENT",
+    "unit": "SQ YD",
+    "totalQuantity": 3007,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 22,
+    "code": "Z0064505",
+    "description": "SECTION CORNER MARKERS",
+    "unit": "EACH",
+    "totalQuantity": 2,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 22,
+    "code": "Z0073510",
+    "description": "TEMPORARY TRAFFIC SIGNAL TIMING",
+    "unit": "EACH",
+    "totalQuantity": 5,
+    "isSpecialtyItem": true
+  },
+  {
+    "sourcePage": 22,
+    "code": "Z0076600",
+    "description": "TRAINEES",
+    "unit": "HOUR",
+    "totalQuantity": 1500,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 22,
+    "code": "Z0076604",
+    "description": "TRAINEES TRAINING PROGRAM GRADUATE",
+    "unit": "HOUR",
+    "totalQuantity": 1500,
+    "isSpecialtyItem": false
+  },
+  {
+    "sourcePage": 22,
+    "code": "Z0077700",
+    "description": "WOOD FENCE TO BE REMOVED AND RE-ERECTED",
+    "unit": "FOOT",
+    "totalQuantity": 100,
+    "isSpecialtyItem": true
+  }
+]

@@ -44,6 +44,16 @@ export interface Toast {
   message: string;
 }
 
+/** A document attached to an inventory item (in-memory; brief 61D34 task 4a). */
+export interface InventoryDoc {
+  id: string;
+  name: string;
+  size: number;
+  mimeType: string;
+  url: string; // object URL (session-scoped)
+  addedAt: string;
+}
+
 interface State {
   status: "idle" | "loading" | "ready" | "error";
   error: string | null;
@@ -115,6 +125,11 @@ interface State {
   setInventoryNote(id: string, note: string): void;
   setEoiApproval(itemId: string, eoiId: string, approval: EOIApproval, note?: string): void;
 
+  // inventory document attachments (in-memory; brief 61D34 task 4a)
+  inventoryDocs: Record<string, InventoryDoc[]>;
+  addInventoryDocs(itemId: string, docs: InventoryDoc[]): void;
+  removeInventoryDoc(itemId: string, docId: string): void;
+
   // inventory writes (brief 05)
   upsertInventoryItem(item: InventoryItem): void;
   setLedger(itemId: string, rows: LedgerEntry[]): void;
@@ -171,6 +186,7 @@ export const useStore = create<State>((set, get) => ({
   ledgerDeltas: {},
   eoiRowDeltas: {},
   payItemStatusDeltas: {},
+  inventoryDocs: {},
 
   diaryDeltas: {},
   suspensionsByContract: new Map(),
@@ -406,6 +422,18 @@ export const useStore = create<State>((set, get) => ({
       },
       "Couldn't save inventory",
     );
+  },
+
+  addInventoryDocs(itemId, docs) {
+    const cur = get().inventoryDocs[itemId] ?? [];
+    set({ inventoryDocs: { ...get().inventoryDocs, [itemId]: [...cur, ...docs] } });
+  },
+
+  removeInventoryDoc(itemId, docId) {
+    const cur = get().inventoryDocs[itemId] ?? [];
+    const doc = cur.find((d) => d.id === docId);
+    if (doc) URL.revokeObjectURL(doc.url);
+    set({ inventoryDocs: { ...get().inventoryDocs, [itemId]: cur.filter((d) => d.id !== docId) } });
   },
 
   setLedger(itemId, rows) {

@@ -134,6 +134,8 @@ export interface PayItem {
   placedQuantity: number;
   fundKey?: string;
   final?: boolean; // "Final a pay item" (brief 08)
+  /** Marked as a specialty item on the plan (gets a subtle tag in the UI). */
+  isSpecialtyItem?: boolean;
 }
 
 /** Authorizations (Ch. 7) — brief 10. */
@@ -311,6 +313,8 @@ export interface Contract {
   subcontractors: SubcontractorRow[];
   projectDocuments: ProjectDocumentRow[];
   finalReview: FinalReview;
+  /** External plan/eplan link (e.g. IDOT eplan URL), shown on the contract page. */
+  externalPlanLink?: string;
 }
 
 // --- Contract sub-tabs (Ch. 2) — Insurance / Documents / Subs / Final Review

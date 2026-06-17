@@ -5,11 +5,9 @@ import { useStore } from "@/store/store";
 import type { Contract, ContractSummary, ProjectDocumentRow, SubcontractorRow } from "@/domain/types";
 import type { PillTone } from "@/domain/status";
 import { Pill } from "@/components/ui/Pill";
-import { TabBar } from "@/components/ui/TabBar";
 import { FieldGroup } from "@/components/ui/FieldGroup";
 import { DataGrid } from "@/components/ui/DataGrid";
 import { IntelligentSearch } from "@/components/ui/IntelligentSearch";
-import { ChevronDown } from "@/components/ui/icons";
 import { CONTRACTORS, DESIGNER_FIRMS } from "@/data/reference";
 import type { Field } from "@/lib/fields";
 import { formatDate, formatMoney, formatNumber } from "@/lib/format";
@@ -110,14 +108,10 @@ const STATUS_TONE: Record<string, PillTone> = {
   Closed: "slate",
 };
 
-const TABS = ["Summary", "Insurance", "Project Documents", "Subcontracting", "Final Review"] as const;
-type Tab = (typeof TABS)[number];
-
 export function ContractSummaryPage() {
   const { contractId } = useParams();
   const contract = useStore((s) => (contractId ? s.contract(contractId) : undefined));
   const canAccess = useStore((s) => (contractId ? s.canAccessContract(contractId) : false));
-  const [tab, setTab] = useState<Tab>("Summary");
 
   const pctComplete = useMemo(() => {
     if (!contract) return 0;
@@ -136,55 +130,78 @@ export function ContractSummaryPage() {
     );
   }
   const s = contract.summary;
-  const tabs = TABS.map((t) => ({
-    id: t,
-    label: t,
-    count:
-      t === "Project Documents"
-        ? contract.projectDocuments.length
-        : t === "Subcontracting"
-          ? contract.subcontractors.length
-          : 0,
-  }));
 
+  // One flat, scrollable page — every contract section is stacked and fully
+  // visible (no tabs, no accordions). See build brief constraint #1.
   return (
     <div className="scroll-thin h-full overflow-y-auto">
-      <div className="mx-auto max-w-5xl px-6 py-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <span className="font-mono text-xl font-bold text-ink">{contract.number}</span>
-              <Pill tone={STATUS_TONE[s.contractStatus] ?? "slate"}>{s.contractStatus}</Pill>
+      <div className="mx-auto max-w-5xl space-y-8 px-6 py-6">
+        <div>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5">
+                <span className="font-mono text-xl font-bold text-ink">{contract.number}</span>
+                <Pill tone={STATUS_TONE[s.contractStatus] ?? "slate"}>{s.contractStatus}</Pill>
+              </div>
+              <h1 className="mt-0.5 text-lg text-ink">{contract.name}</h1>
+              <p className="text-sm text-ink-soft">{s.jobDescription}</p>
+              {contract.externalPlanLink && (
+                <a
+                  href={contract.externalPlanLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-accent hover:underline"
+                >
+                  📐 View plans (IDOT eplan)
+                </a>
+              )}
             </div>
-            <h1 className="mt-0.5 text-lg text-ink">{contract.name}</h1>
-            <p className="text-sm text-ink-soft">{s.jobDescription}</p>
+            <Link
+              to={`/contract/${contract.id}/inventory`}
+              className="shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg transition hover:bg-accent-hover"
+            >
+              Open Inventory
+            </Link>
           </div>
-          <Link
-            to={`/contract/${contract.id}/inventory`}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg transition hover:bg-accent-hover"
-          >
-            Open Inventory
-          </Link>
+
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <KeyStat label="Current Amount" value={formatMoney(s.currentContractAmount)} />
+            <KeyStat label="Paid to Date" value={formatMoney(s.totalPaidToDate)} sub={`${pctComplete}% of contract`} />
+            <KeyStat label="Completion Date" value={formatDate(s.contractCompletionDate)} />
+            <KeyStat label="Prime Contractor" value={s.primeContractor} />
+          </div>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <KeyStat label="Current Amount" value={formatMoney(s.currentContractAmount)} />
-          <KeyStat label="Paid to Date" value={formatMoney(s.totalPaidToDate)} sub={`${pctComplete}% of contract`} />
-          <KeyStat label="Completion Date" value={formatDate(s.contractCompletionDate)} />
-          <KeyStat label="Prime Contractor" value={s.primeContractor} />
-        </div>
-
-        <TabBar tabs={tabs} active={tab} onChange={setTab} className="mt-6" />
-
-        <div className="mt-4">
-          {tab === "Summary" && <SummaryTab summary={s} />}
-          {tab === "Insurance" && <InsuranceTab contract={contract} />}
-          {tab === "Project Documents" && <DocumentsTab contract={contract} />}
-          {tab === "Subcontracting" && <SubcontractingTab contract={contract} />}
-          {tab === "Final Review" && <FinalReviewTab contract={contract} />}
-        </div>
+        <FlatSection title="Summary">
+          <SummaryTab summary={s} />
+        </FlatSection>
+        <FlatSection title="Insurance">
+          <InsuranceTab contract={contract} />
+        </FlatSection>
+        <FlatSection title="Project Documents" count={contract.projectDocuments.length}>
+          <DocumentsTab contract={contract} />
+        </FlatSection>
+        <FlatSection title="Subcontracting" count={contract.subcontractors.length}>
+          <SubcontractingTab contract={contract} />
+        </FlatSection>
+        <FlatSection title="Final Review">
+          <FinalReviewTab contract={contract} />
+        </FlatSection>
       </div>
     </div>
+  );
+}
+
+/** A flat, always-visible section header + body (replaces the old tab pages). */
+function FlatSection({ title, count, children }: { title: string; count?: number; children: React.ReactNode }) {
+  return (
+    <section>
+      <div className="mb-3 flex items-center gap-2 border-b border-line pb-2">
+        <h2 className="text-base font-semibold text-ink">{title}</h2>
+        {count !== undefined && <span className="text-xs text-ink-faint tabular-nums">{count}</span>}
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -194,8 +211,7 @@ function SummaryTab({ summary }: { summary: ContractSummary }) {
   const [showEmpty, setShowEmpty] = useState(false);
   return (
     <>
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-faint">Contract Summary</h2>
+      <div className="flex items-center justify-end">
         <label className="flex items-center gap-2 text-sm text-ink-soft">
           <input type="checkbox" className="h-4 w-4 cursor-pointer accent-accent" checked={showEmpty} onChange={(e) => setShowEmpty(e.target.checked)} />
           Show empty fields
@@ -203,38 +219,32 @@ function SummaryTab({ summary }: { summary: ContractSummary }) {
       </div>
       <div className="mt-3 space-y-3">
         {CARDS.map((card) => (
-          <Card key={card.title} card={card} summary={summary} showEmpty={showEmpty} />
+          <SummaryCard key={card.title} card={card} summary={summary} showEmpty={showEmpty} />
         ))}
       </div>
     </>
   );
 }
 
-function Card({ card, summary, showEmpty }: { card: CardDef; summary: ContractSummary; showEmpty: boolean }) {
-  const [open, setOpen] = useState(card.defaultOpen);
+/** Flat, always-visible summary group (no collapse). */
+function SummaryCard({ card, summary, showEmpty }: { card: CardDef; summary: ContractSummary; showEmpty: boolean }) {
   const visibleFields = card.fields.filter((f) => showEmpty || !isEmpty(summary[f.key]));
-  const hiddenCount = card.fields.length - visibleFields.length;
+  if (visibleFields.length === 0) return null;
   return (
     <section className="overflow-hidden rounded-card border border-line bg-surface">
-      <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center gap-2 px-4 py-3 text-left transition hover:bg-canvas">
-        <ChevronDown className={["text-base text-ink-faint transition", open ? "" : "-rotate-90"].join(" ")} />
+      <div className="border-b border-line px-4 py-2.5">
         <span className="text-sm font-semibold text-ink">{card.title}</span>
-        <span className="text-xs text-ink-faint">{visibleFields.length} fields</span>
-        {!showEmpty && hiddenCount > 0 && <span className="ml-auto text-xs text-ink-faint">{hiddenCount} empty hidden</span>}
-      </button>
-      {open && (
-        <div className="grid grid-cols-1 gap-x-8 gap-y-4 border-t border-line px-4 py-4 sm:grid-cols-2 lg:grid-cols-3">
-          {visibleFields.map((f) => (
-            <div key={f.label} className="min-w-0">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">{f.label}</div>
-              <div className={["truncate text-sm text-ink", f.type === "mono" ? "font-mono" : ""].join(" ")} title={String(summary[f.key] ?? "")}>
-                {formatSummary(summary[f.key], f.type)}
-              </div>
+      </div>
+      <div className="grid grid-cols-1 gap-x-8 gap-y-4 px-4 py-4 sm:grid-cols-2 lg:grid-cols-3">
+        {visibleFields.map((f) => (
+          <div key={f.label} className="min-w-0">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">{f.label}</div>
+            <div className={["truncate text-sm text-ink", f.type === "mono" ? "font-mono" : ""].join(" ")} title={String(summary[f.key] ?? "")}>
+              {formatSummary(summary[f.key], f.type)}
             </div>
-          ))}
-          {visibleFields.length === 0 && <p className="text-sm text-ink-faint">All fields in this section are empty.</p>}
-        </div>
-      )}
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
@@ -265,7 +275,7 @@ function InsuranceTab({ contract }: { contract: Contract }) {
 
   return (
     <div className="space-y-4">
-      <FieldGroup title="Contractor Insurance" fields={block} showEmpty />
+      <FieldGroup title="Contractor Insurance" fields={block} showEmpty collapsible={false} />
       <section className="overflow-hidden rounded-card border border-line bg-surface">
         <div className="border-b border-line px-4 py-3 text-sm font-semibold text-ink">Policy Status</div>
         <table className="w-full text-sm">
@@ -474,15 +484,15 @@ function FinalReviewTab({ contract }: { contract: Contract }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-faint">Final Review — close-out dashboard</h2>
+        <span className="text-xs text-ink-faint">Close-out dashboard</span>
         <label className="flex items-center gap-2 text-sm text-ink-soft">
           <input type="checkbox" className="h-4 w-4 cursor-pointer accent-accent" checked={showEmpty} onChange={(e) => setShowEmpty(e.target.checked)} />
           Show empty fields
         </label>
       </div>
-      <FieldGroup title="Final from District" fields={finalFromDistrict} showEmpty={showEmpty} />
-      <FieldGroup title="Documentation Review" fields={documentationReview} showEmpty={showEmpty} defaultOpen={false} />
-      <FieldGroup title="Materials Review" fields={materialsReview} showEmpty={showEmpty} defaultOpen={false} />
+      <FieldGroup title="Final from District" fields={finalFromDistrict} showEmpty={showEmpty} collapsible={false} />
+      <FieldGroup title="Documentation Review" fields={documentationReview} showEmpty={showEmpty} collapsible={false} />
+      <FieldGroup title="Materials Review" fields={materialsReview} showEmpty={showEmpty} collapsible={false} />
       <section className="overflow-hidden rounded-card border border-line bg-surface">
         <div className="border-b border-line px-4 py-3 text-sm font-semibold text-ink">Performance Period Status</div>
         {fr.performancePeriod.length === 0 ? (
@@ -514,7 +524,7 @@ function FinalReviewTab({ contract }: { contract: Contract }) {
           </table>
         )}
       </section>
-      <FieldGroup title="DBE Close Out" fields={dbeCloseOut} showEmpty={showEmpty} defaultOpen={false} />
+      <FieldGroup title="DBE Close Out" fields={dbeCloseOut} showEmpty={showEmpty} collapsible={false} />
     </div>
   );
 }

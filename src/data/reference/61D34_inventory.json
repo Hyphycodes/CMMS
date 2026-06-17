@@ -1,0 +1,198 @@
+[
+ {
+  "code": "016CA07",
+  "description": "TRENCH BFILL & BED",
+  "producerNumber": "51972-15",
+  "producerName": "AMRIZE ROCKDALE, IL",
+  "heatId": "90824048"
+ },
+ {
+  "code": "016FA06",
+  "description": "TRENCH BFILL & BED",
+  "producerNumber": "",
+  "producerName": "",
+  "heatId": "113647200"
+ },
+ {
+  "code": "016FM21",
+  "description": "TRENCH BFILL & BED",
+  "producerNumber": "51972-15",
+  "producerName": "AMRIZE ROCKDALE, IL",
+  "heatId": "90824984"
+ },
+ {
+  "code": "017CM01",
+  "description": "AGG RECYCLED BIT MIX",
+  "producerNumber": "50315-12",
+  "producerName": "D-CONSTRUCTION HAZELCREST, IL",
+  "heatId": "100885088"
+ },
+ {
+  "code": "019CS01",
+  "description": "SPECIAL AGG SUBGRADE",
+  "producerNumber": "51975-08",
+  "producerName": "\"D\" CONSTRUCTION VARIOUS, IL",
+  "heatId": "100889244"
+ },
+ {
+  "code": "052CM06",
+  "description": "STONE CR CLDQ",
+  "producerNumber": "51972-15",
+  "producerName": "AMRIZE ROCKDALE, IL",
+  "heatId": "90832729"
+ },
+ {
+  "code": "19514",
+  "description": "HMA SC N50 D",
+  "producerNumber": "",
+  "producerName": "",
+  "heatId": "81245579"
+ },
+ {
+  "code": "19514R",
+  "description": "HMA SC N50 D REC",
+  "producerNumber": "5116-05",
+  "producerName": "D CONSTRUCTION INC. ROCKDALE, IL",
+  "heatId": "111972811"
+ },
+ {
+  "code": "19522R",
+  "description": "HMA BC N70 19.0R",
+  "producerNumber": "5116-04",
+  "producerName": "D. CONSTRUCTION INC. MORRIS, IL",
+  "heatId": "90795959"
+ },
+ {
+  "code": "19522R",
+  "description": "HMA BC N70 19.0R",
+  "producerNumber": "5116-05",
+  "producerName": "D CONSTRUCTION INC. ROCKDALE, IL",
+  "heatId": "90796140"
+ },
+ {
+  "code": "19522R",
+  "description": "HMA BC N70 19.0R",
+  "producerNumber": "5116-06",
+  "producerName": "D CONSTRUCTION INC. HAZEL CREST, IL",
+  "heatId": "90796386"
+ },
+ {
+  "code": "19524R",
+  "description": "HMA SC N70 D REC",
+  "producerNumber": "5116-05",
+  "producerName": "D CONSTRUCTION INC. ROCKDALE, IL",
+  "heatId": "100825447"
+ },
+ {
+  "code": "19532R",
+  "description": "HMA BC N90 19.0R",
+  "producerNumber": "5116-05",
+  "producerName": "D CONSTRUCTION INC. ROCKDALE, IL",
+  "heatId": "111969919"
+ },
+ {
+  "code": "21621",
+  "description": "GROUT CLSM",
+  "producerNumber": "1494-20",
+  "producerName": "OZINGA ILLINOIS LEMONT, IL",
+  "heatId": "90798685"
+ },
+ {
+  "code": "25206",
+  "description": "INLET COMPLETE",
+  "producerNumber": "3505-01",
+  "producerName": "WELCH BROS ELGIN, IL",
+  "heatId": "90844770"
+ },
+ {
+  "code": "25209",
+  "description": "VAULT VALVE",
+  "producerNumber": "2584-02",
+  "producerName": "UTILITY CONCRETE MORRIS, IL",
+  "heatId": "116188222"
+ },
+ {
+  "code": "25518",
+  "description": "RETAINING WALL BLOCK",
+  "producerNumber": "",
+  "producerName": "",
+  "heatId": "113939207"
+ },
+ {
+  "code": "26101",
+  "description": "MANHOLE COMPLETE",
+  "producerNumber": "3505-01",
+  "producerName": "WELCH BROS ELGIN, IL",
+  "heatId": "90844135"
+ },
+ {
+  "code": "26102",
+  "description": "CATCH BASIN COMPLETE",
+  "producerNumber": "3505-01",
+  "producerName": "WELCH BROS ELGIN, IL",
+  "heatId": "90844751"
+ },
+ {
+  "code": "47703",
+  "description": "PIPE CLIII RECONC",
+  "producerNumber": "3505-01",
+  "producerName": "WELCH BROS ELGIN, IL",
+  "heatId": "111651797"
+ },
+ {
+  "code": "47704",
+  "description": "PIPE CLIV RCONC",
+  "producerNumber": "3505-01",
+  "producerName": "WELCH BROS ELGIN, IL",
+  "heatId": "90833725"
+ },
+ {
+  "code": "47705",
+  "description": "PIPE CLV RCONC",
+  "producerNumber": "3505-01",
+  "producerName": "WELCH BROS ELGIN, IL",
+  "heatId": "111652325"
+ },
+ {
+  "code": "47904",
+  "description": "PIPE HE-III RECONC",
+  "producerNumber": "3505-03",
+  "producerName": "WELCH BROS BELVIDERE, IL",
+  "heatId": "90833787"
+ },
+ {
+  "code": "49821",
+  "description": "FABRIC SILT FENCE",
+  "producerNumber": "6592-01",
+  "producerName": "MEWAR POLYTEX LIMITED MADRI, UDAIPAR RAJ, ZZ",
+  "heatId": "85561052"
+ },
+ {
+  "code": "56221",
+  "description": "MULCH HYDRAULIC",
+  "producerNumber": "6320-01",
+  "producerName": "PROFILE PRODUCTS LLC BUFFALO GROVE, IL",
+  "heatId": "87257378"
+ },
+ {
+  "code": "56228",
+  "description": "SEDMNT LOG RLD XCLSR",
+  "producerNumber": "84-04",
+  "producerName": "AMERICAN EXCELSIOR ARLINGTON, TX",
+  "heatId": "85576116"
+ },
+ {
+  "code": "56413",
+  "description": "SEED OATS",
+  "producerNumber": "4430-01",
+  "producerName": "MARTENSON SEED WATERMAN, IL",
+  "heatId": "88952393"
+ },
+ {
+  "code": "72024",
+  "description": "FILTER INLT SED CNTL",
+  "producerNumber": "3511-25",
+  "producerName": "ADVANCED DRAINAGE SYSTEMS INC NAPERVILLE, IL",
+  "heatId": "102349803"
+ }
+]

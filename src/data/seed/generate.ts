@@ -51,6 +51,7 @@ import { buildPayItemMaterials } from "@/domain/grouping";
 import { lineAmount, sumAmounts } from "@/domain/money";
 import myProjects from "@/data/reference/my_projects.json";
 import mySamples from "@/data/reference/my_samples.json";
+import { CONTRACT_61D34, PAY_ITEMS_61D34, INVENTORY_61D34 } from "./contract61D34";
 
 export const MASTER_SEED = "proof-cmms-v1";
 const MS_DAY = 86_400_000;
@@ -676,6 +677,11 @@ export function generateWorld(config: SeedConfig = DEFAULT_SEED_CONFIG): World {
     payItemsByContract.set(real.id, []);
   }
 
+  // 61D34 — a fully migrated real contract: rich metadata, 257 plan pay items,
+  // and 28 real inventory rows (appended below, after status assignment).
+  contracts.push(CONTRACT_61D34);
+  payItemsByContract.set(CONTRACT_61D34.id, PAY_ITEMS_61D34);
+
   // Distribute inventory items across contracts with a realistic spread:
   // most contracts modest, a few large. Weighted by contract index hash.
   const sizes = contracts.map((c) => {
@@ -691,6 +697,8 @@ export function generateWorld(config: SeedConfig = DEFAULT_SEED_CONFIG): World {
   let serial = 1;
 
   contracts.forEach((contract, ci) => {
+    // 61D34 carries its own real inventory (appended after status assignment).
+    if (contract.id === CONTRACT_61D34.id) return;
     const payItems = payItemsByContract.get(contract.id)!;
     const iRng = makeRng(`${MASTER_SEED}:inv:${contract.id}`);
     const size = scaledSizes[ci];
@@ -738,6 +746,10 @@ export function generateWorld(config: SeedConfig = DEFAULT_SEED_CONFIG): World {
   // Assign statuses with a global budget for "Ready for Review".
   assignStatuses(items, config.readyForReviewCount, root);
   injectDuplicateClusters(items, contracts, payItemsByContract);
+
+  // 61D34's real inventory — appended after status assignment so every row keeps
+  // its "Needs Attention" default (these are freshly migrated, not yet reviewed).
+  items.push(...INVENTORY_61D34);
 
   // Denormalize counts onto contracts.
   const byContract = new Map<string, InventoryItem[]>();

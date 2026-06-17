@@ -67,6 +67,11 @@ export function QuantityBookPage() {
               <div className="flex items-center gap-2">
                 <span className="font-mono text-[13px] font-semibold text-ink">{p.number}</span>
                 {p.final && <Pill tone="green">Final</Pill>}
+                {p.isSpecialtyItem && (
+                  <span className="rounded border border-line px-1 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-faint">
+                    Specialty
+                  </span>
+                )}
               </div>
               <div className="truncate text-xs text-ink-soft" title={p.description}>{p.description}</div>
               <div className="mt-1 flex items-center gap-2">

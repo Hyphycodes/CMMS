@@ -5,10 +5,11 @@
  * until every EOI row is approved. All writes go through optimistic store
  * mutations (setLedger / setEoi / setPayItemMaterialStatus / setEoiApproval).
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@/store/store";
 import { buildOverlaidDetail } from "@/data/seed/generate";
 import { EOI_CODES, MOA_CODES, MATERIALS } from "@/data/reference";
+import { XIcon } from "@/components/ui/icons";
 import {
   INVENTORY_STATUSES,
   EOI_APPROVALS,
@@ -23,13 +24,11 @@ import { Pill } from "@/components/ui/Pill";
 import { DetailDrawer } from "@/components/ui/DetailDrawer";
 import { InventoryForm } from "@/components/inventory/InventoryForm";
 import {
-  EditableRowTable,
   EditText,
   EditNumber,
   EditDate,
   EditSelect,
   EditChips,
-  type EditableColumn,
 } from "@/components/ui/EditableRowTable";
 import { inventoryTone, eoiTone, payItemTone, groupTone } from "@/domain/status";
 import { formatDate, formatQty, formatNumber } from "@/lib/format";
@@ -98,6 +97,7 @@ export function ItemDetailDrawer({ itemId, onClose }: { itemId: string; onClose:
         activeTab={tab}
         onTabChange={setTab}
         onClose={onClose}
+        width={1040}
       >
         {tab === "Details" && <DetailsTab detail={detail} canEdit={canEdit} onEdit={() => setEditing(true)} />}
         {tab === "Quantity Ledger" && <LedgerTab detail={detail} itemId={itemId} payItems={payItems} canEdit={canEdit} />}
@@ -286,49 +286,102 @@ function LedgerTab({
     ]);
   };
 
-  const columns: EditableColumn<LedgerEntry>[] = [
-    { key: "id", header: "Id", width: "50px", render: (r) => <span className="font-mono text-[13px]">{r.id}</span> },
-    { key: "date", header: "Date", width: "140px", render: (r) => <EditDate value={r.date} disabled={!canEdit} onCommit={(v) => editRow(String(r.id), { date: v })} /> },
-    { key: "payItem", header: "Pay Item", width: "minmax(120px,1fr)",
-      render: (r) =>
-        payItemOptions.length ? (
-          <EditSelect value={r.payItemNumber || payItemOptions[0]} options={payItemOptions} disabled={!canEdit} onCommit={(v) => editRow(String(r.id), { payItemNumber: v })} />
-        ) : (
-          <EditText value={r.payItemNumber} disabled={!canEdit} mono onCommit={(v) => editRow(String(r.id), { payItemNumber: v })} />
-        ) },
-    { key: "desc1", header: "Desc 1", width: "minmax(90px,1fr)", render: (r) => <EditText value={r.desc1} disabled={!canEdit} onCommit={(v) => editRow(String(r.id), { desc1: v })} /> },
-    { key: "desc2", header: "Desc 2", width: "minmax(90px,1fr)", render: (r) => <EditText value={r.desc2} disabled={!canEdit} onCommit={(v) => editRow(String(r.id), { desc2: v })} /> },
-    { key: "mix", header: "Mix Design", width: "minmax(110px,1fr)", render: (r) => <EditText value={r.mixDesign} disabled={!canEdit} mono onCommit={(v) => editRow(String(r.id), { mixDesign: v })} /> },
-    { key: "blh", header: "Batch/Lot/Heat", width: "minmax(120px,1fr)", render: (r) => <EditText value={r.batchLotHeat} disabled={!canEdit} mono onCommit={(v) => editRow(String(r.id), { batchLotHeat: v })} /> },
-    { key: "type", header: "Type", width: "130px", render: (r) => <EditSelect value={r.type} options={LEDGER_TYPES} disabled={!canEdit} onCommit={(v) => editRow(String(r.id), { type: v })} /> },
-    {
-      key: "qty",
-      header: "Trans. Qty",
-      width: "110px",
-      align: "right",
-      render: (r) => <EditNumber value={r.transactionQty} disabled={!canEdit} onCommit={(v) => editRow(String(r.id), { transactionQty: v })} />,
-      footer: () => `${formatNumber(received, 2)}`,
-    },
-  ];
+  const deleteRow = (id: string) => commit(rows.filter((r) => String(r.id) !== id));
+
+  // Fitted grid: identity (Id) is frozen left; flexible text columns shrink so
+  // all columns fit within the drawer at desktop width — no horizontal scroll.
+  const template =
+    "44px 124px minmax(0,1.3fr) minmax(0,0.9fr) minmax(0,0.9fr) minmax(0,1.05fr) minmax(0,1.15fr) 112px 96px" +
+    (canEdit ? " 64px" : "");
+  const headers = ["Id", "Date", "Pay Item", "Desc 1", "Desc 2", "Mix Design", "Batch/Lot/Heat", "Type", "Trans. Qty"];
+
+  const stickyId = "sticky left-0 z-10 bg-surface";
+  const stickyIdHead = "sticky left-0 z-10 bg-canvas";
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-4 rounded-lg border border-line bg-canvas px-4 py-2.5 text-sm">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-line bg-canvas px-4 py-2.5 text-sm">
         <span className="text-ink-soft">Ledger summary</span>
         <span className="font-semibold text-ink">{formatQty(received, detail.materialUnit)} received</span>
-        <span className="text-ink-faint">· {rows.length} entries · Material Unit {detail.materialUnit}</span>
+        <span className="text-ink-faint">· {rows.length} entries · Material Unit {detail.materialUnit || "—"}</span>
       </div>
-      <EditableRowTable
-        rows={rows}
-        columns={columns}
-        getRowId={(r) => String(r.id)}
-        onEdit={(id, patch) => editRow(id, patch)}
-        onAdd={canEdit ? addRow : undefined}
-        onDelete={canEdit ? (id) => commit(rows.filter((r) => String(r.id) !== id)) : undefined}
-        addLabel="+ Add ledger row"
-        readOnly={!canEdit}
-        emptyMessage="No ledger entries yet."
-      />
+
+      <div className="overflow-x-auto rounded-lg border border-line">
+        <div style={{ minWidth: 640 }}>
+          {/* header */}
+          <div
+            className="grid items-center gap-2 border-b border-line bg-canvas px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-ink-soft"
+            style={{ gridTemplateColumns: template }}
+          >
+            {headers.map((h, i) => (
+              <span
+                key={h}
+                className={[i === 0 ? stickyIdHead : "", i === 8 ? "text-right" : "", "truncate"].join(" ")}
+              >
+                {h}
+              </span>
+            ))}
+            {canEdit && <span />}
+          </div>
+
+          {/* rows */}
+          {rows.length === 0 ? (
+            <p className="px-3 py-6 text-center text-sm text-ink-soft">No ledger entries yet.</p>
+          ) : (
+            rows.map((r) => (
+              <div
+                key={r.id}
+                className="grid items-center gap-2 border-b border-line/70 px-3 py-1.5 text-sm last:border-b-0"
+                style={{ gridTemplateColumns: template }}
+              >
+                <span className={[stickyId, "font-mono text-[13px] text-ink-faint"].join(" ")}>{r.id}</span>
+                <EditDate value={r.date} disabled={!canEdit} onCommit={(v) => editRow(String(r.id), { date: v })} />
+                {payItemOptions.length ? (
+                  <EditSelect value={r.payItemNumber || payItemOptions[0]} options={payItemOptions} disabled={!canEdit} onCommit={(v) => editRow(String(r.id), { payItemNumber: v })} />
+                ) : (
+                  <EditText value={r.payItemNumber} disabled={!canEdit} mono onCommit={(v) => editRow(String(r.id), { payItemNumber: v })} />
+                )}
+                <EditText value={r.desc1} disabled={!canEdit} onCommit={(v) => editRow(String(r.id), { desc1: v })} />
+                <EditText value={r.desc2} disabled={!canEdit} onCommit={(v) => editRow(String(r.id), { desc2: v })} />
+                <EditText value={r.mixDesign} disabled={!canEdit} mono onCommit={(v) => editRow(String(r.id), { mixDesign: v })} />
+                <EditText value={r.batchLotHeat} disabled={!canEdit} mono onCommit={(v) => editRow(String(r.id), { batchLotHeat: v })} />
+                <EditSelect value={r.type} options={LEDGER_TYPES} disabled={!canEdit} onCommit={(v) => editRow(String(r.id), { type: v })} />
+                <EditNumber value={r.transactionQty} disabled={!canEdit} onCommit={(v) => editRow(String(r.id), { transactionQty: v })} />
+                {canEdit && (
+                  <button
+                    onClick={() => deleteRow(String(r.id))}
+                    className="rounded-md px-2 py-1 text-xs text-ink-faint transition hover:bg-red-50 hover:text-red-700"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            ))
+          )}
+
+          {/* totals — distinct from the rows */}
+          {rows.length > 0 && (
+            <div
+              className="grid items-center gap-2 border-t-2 border-line bg-canvas px-3 py-2 text-sm font-medium text-ink"
+              style={{ gridTemplateColumns: template }}
+            >
+              <span className={stickyId.replace("bg-surface", "bg-canvas")} />
+              <span className="col-span-7 text-ink-soft">Total received</span>
+              <span className="text-right tabular-nums">{formatNumber(received, 2)}</span>
+              {canEdit && <span />}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {canEdit && (
+        <button
+          onClick={addRow}
+          className="rounded-lg border border-dashed border-line px-3 py-1.5 text-sm font-medium text-accent transition hover:border-accent hover:bg-accent-soft"
+        >
+          + Add ledger row
+        </button>
+      )}
     </div>
   );
 }
@@ -393,6 +446,117 @@ function EOITab({ detail, itemId, canEdit }: { detail: InventoryDetail; itemId: 
           + Add EOI row
         </button>
       )}
+
+      <EoiDocuments itemId={itemId} canEdit={canEdit} />
+    </div>
+  );
+}
+
+// --- Document upload (persisted against the inventory item) ----------------
+
+const EMPTY_DOCS: never[] = [];
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function EoiDocuments({ itemId, canEdit }: { itemId: string; canEdit: boolean }) {
+  const docs = useStore((s) => s.inventoryDocs[itemId] ?? EMPTY_DOCS);
+  const addDocs = useStore((s) => s.addInventoryDocs);
+  const removeDoc = useStore((s) => s.removeInventoryDoc);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const ingest = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    addDocs(
+      itemId,
+      Array.from(files).map((f) => ({
+        id: `doc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        name: f.name,
+        size: f.size,
+        mimeType: f.type,
+        url: URL.createObjectURL(f),
+        addedAt: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+      })),
+    );
+  };
+
+  return (
+    <div className="border-t border-line pt-4">
+      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Documents</div>
+
+      {docs.length > 0 && (
+        <div className="mb-3 space-y-2">
+          {docs.map((d) => (
+            <div key={d.id} className="flex items-center gap-3 rounded-lg border border-line bg-canvas px-3 py-2">
+              <span className="text-lg">📄</span>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium text-ink">{d.name}</div>
+                <div className="text-xs text-ink-faint">
+                  {formatBytes(d.size)}
+                  {d.mimeType ? ` · ${d.mimeType}` : ""} · Added {d.addedAt}
+                </div>
+              </div>
+              <a href={d.url} download={d.name} className="shrink-0 text-xs font-medium text-accent hover:underline">
+                Download
+              </a>
+              {canEdit && (
+                <button
+                  onClick={() => removeDoc(itemId, d.id)}
+                  title="Remove"
+                  className="shrink-0 rounded p-0.5 text-ink-faint transition hover:text-red-600"
+                >
+                  <XIcon className="text-base" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {canEdit && (
+        <>
+          <input
+            ref={fileRef}
+            type="file"
+            multiple
+            accept="application/pdf,image/*"
+            className="hidden"
+            onChange={(e) => {
+              ingest(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              ingest(e.dataTransfer.files);
+            }}
+            onClick={() => fileRef.current?.click()}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === "Enter" && fileRef.current?.click()}
+            className={[
+              "flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed px-4 py-5 text-center transition select-none",
+              dragging ? "border-accent bg-accent/5" : "border-line hover:border-accent/60 hover:bg-canvas",
+            ].join(" ")}
+          >
+            <span className="text-sm font-medium text-ink">Add document</span>
+            <span className="text-xs text-ink-faint">Click to browse or drag and drop — PDF or images</span>
+          </div>
+        </>
+      )}
+
+      {!canEdit && docs.length === 0 && <p className="text-sm text-ink-faint">No documents uploaded.</p>}
     </div>
   );
 }
@@ -438,21 +602,26 @@ function EOIRow({
           <EditChips selected={row.actualMoa} options={MOA_CODES} disabled={!canEdit} onToggle={(next) => onEditRow(row.id, { actualMoa: next })} />
         </Meta>
         <Meta label="Test ID">
-          {approvedTestIds.length > 0 ? (
-            <select
-              value={row.testId}
-              disabled={!canEdit}
-              onChange={(e) => onEditRow(row.id, { testId: e.target.value })}
-              className="rounded-md border border-line bg-surface px-2 py-1 text-sm outline-none focus:border-accent disabled:opacity-60"
-            >
-              <option value="">—</option>
+          {/* inline-editable: free text + autocomplete of approved Test IDs */}
+          <input
+            key={row.testId}
+            defaultValue={row.testId}
+            disabled={!canEdit}
+            list={approvedTestIds.length ? `tid-${row.id}` : undefined}
+            placeholder="—"
+            onBlur={(e) => {
+              const v = e.target.value.trim();
+              if (v !== row.testId) onEditRow(row.id, { testId: v });
+            }}
+            onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+            className="w-28 rounded-md border border-line bg-surface px-2 py-1 font-mono text-sm outline-none focus:border-accent disabled:opacity-60"
+          />
+          {approvedTestIds.length > 0 && (
+            <datalist id={`tid-${row.id}`}>
               {approvedTestIds.map((t) => (
-                <option key={t} value={t}>{t}</option>
+                <option key={t} value={t} />
               ))}
-              {row.testId && !approvedTestIds.includes(row.testId) && <option value={row.testId}>{row.testId}</option>}
-            </select>
-          ) : (
-            <span className="font-mono">{row.testId || "—"}</span>
+            </datalist>
           )}
         </Meta>
         <label className="flex items-center gap-1.5 text-xs text-ink-soft">
