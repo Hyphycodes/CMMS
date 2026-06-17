@@ -93,6 +93,16 @@ export type MaterialFamily =
   | "Hardware"
   | "Other";
 
+/** Mix Design (Ch. 9 / 13) — brief 11. */
+export interface MixDesign {
+  number: string;
+  materialCode: string;
+  family: MaterialFamily;
+  producer: string;
+  approved: boolean;
+  docUrl?: string;
+}
+
 export interface Vendor {
   number: string; // e.g. "2112-14"
   name: string; // e.g. "Advance Asphalt Co"

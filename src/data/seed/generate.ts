@@ -47,6 +47,7 @@ import type {
   Authorization,
   AuthType,
   AuthApproval,
+  MixDesign,
 } from "@/domain/types";
 import { makeRng, type Rng } from "./rng";
 import { buildPayItemMaterials } from "@/domain/grouping";
@@ -78,6 +79,28 @@ export interface World {
   placements: PlacementEntry[];
   payEstimates: PayEstimate[];
   authorizations: Authorization[];
+  mixDesigns: MixDesign[];
+}
+
+/** Mix designs for HMA/PCC families (Ch. 9) — brief 11. */
+function generateMixDesigns(): MixDesign[] {
+  const rng = makeRng(`${MASTER_SEED}:mixdesign`);
+  const families = MATERIALS.filter((m) => m.family === "HMA" || m.family === "Concrete");
+  const out: MixDesign[] = [];
+  for (const m of families) {
+    const n = rng.int(1, 3);
+    for (let i = 0; i < n; i++) {
+      const producer = producerFor(m, rng);
+      out.push({
+        number: m.family === "HMA" ? `80BIT${rng.int(1000, 9999)}` : `PCC${rng.int(1000, 9999)}`,
+        materialCode: m.code,
+        family: m.family,
+        producer: producer.name,
+        approved: rng.bool(0.8),
+      });
+    }
+  }
+  return out;
 }
 
 export const AUTH_STEPS: Record<AuthType, string[]> = {
@@ -602,6 +625,7 @@ export function generateWorld(config: SeedConfig = DEFAULT_SEED_CONFIG): World {
     placements,
     payEstimates,
     authorizations,
+    mixDesigns: generateMixDesigns(),
   };
 }
 

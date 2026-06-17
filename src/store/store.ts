@@ -27,6 +27,7 @@ import type {
   PlacementEntry,
   PayEstimate,
   Authorization,
+  MixDesign,
 } from "@/domain/types";
 import { lineAmount, sumAmounts } from "@/domain/money";
 import { getDataSource } from "@/data/dataSource";
@@ -69,6 +70,9 @@ interface State {
 
   // authorizations (brief 10)
   authorizationsList: Authorization[];
+
+  // materials admin (brief 11)
+  mixDesignsList: MixDesign[];
 
   // samples + tests (briefs 03–04)
   samplesList: Sample[];
@@ -174,6 +178,7 @@ export const useStore = create<State>((set, get) => ({
   placementsList: [],
   payEstimatesList: [],
   authorizationsList: [],
+  mixDesignsList: [],
 
   samplesList: [],
   testsList: [],
@@ -218,6 +223,7 @@ export const useStore = create<State>((set, get) => ({
         placementsList: world.placements,
         payEstimatesList: world.payEstimates,
         authorizationsList: world.authorizations,
+        mixDesignsList: world.mixDesigns,
         samplesList: world.samples,
         testsList: world.tests,
         testTemplates: world.testTemplates,

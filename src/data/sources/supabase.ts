@@ -90,6 +90,7 @@ export function createSupabaseDataSource(): DataSource {
         placements: [],
         payEstimates: [],
         authorizations: [],
+        mixDesigns: [],
       };
       return {
         world,
