@@ -201,6 +201,144 @@ export interface Contract {
   inventoryCount: number;
   readyForReviewCount: number;
   summary: ContractSummary;
+  // Contract node sub-tabs (brief 06)
+  insurance: ContractInsurance;
+  subcontractors: SubcontractorRow[];
+  projectDocuments: ProjectDocumentRow[];
+  finalReview: FinalReview;
+}
+
+// --- Contract sub-tabs (Ch. 2) — Insurance / Documents / Subs / Final Review
+
+export type PolicyKind =
+  | "General Liability"
+  | "Automotive Liability"
+  | "Umbrella Liability"
+  | "Workman's Compensation";
+
+export interface ContractInsurance {
+  contractorNo: string;
+  primeContractorName: string;
+  itemNo: string;
+  finalAcceptanceDate: string | null;
+  pctComplete: number;
+  pctCompleteDate: string | null;
+  policies: { kind: PolicyKind; status: string; expiration: string | null }[];
+  railroad: {
+    policyNo: string;
+    company: string;
+    expiration: string | null;
+    approvalRequested: string | null;
+    approvalReceipt: string | null;
+    workCompleted: string | null;
+  }[];
+}
+
+export interface SubcontractorRow {
+  createDate: string;
+  companyNumber: string;
+  name: string;
+}
+
+export interface ProjectDocumentRow {
+  id: string;
+  date: string;
+  title: string;
+  subject: string; // category
+  from: string;
+  attachment: string;
+  origin: string; // e.g. IDOT
+  hasFile: boolean;
+}
+
+export interface FinalFromDistrict {
+  deadlineForFinalFrcBills: string | null;
+  finalInspectionLetters: string | null;
+  allPayItemsFinal: boolean;
+  fqSent: string | null;
+  fqAgree: string | null;
+  fqCertified: string | null;
+  fqReceived: string | null;
+  challengedFq: boolean;
+  intentToFileClaim: boolean;
+  claimL1: string | null;
+  claimL2: string | null;
+  claimResolved: string | null;
+  qtyAdjustmentLetter: string | null;
+  opsSignoff: string | null;
+  finalInspectionBc71: string | null;
+  fpeBc111: string | null;
+  localAgencyCertBc608: string | null;
+  recordsPayrollRetention: string | null;
+  recordsLocation: string;
+  stateCompletionNotice: string | null;
+  forCoToReview: boolean;
+  projectControlManager: string;
+}
+
+export interface DocumentationReview {
+  recordsTurnedIn: string | null;
+  auditStart: string | null;
+  numIssues: number;
+  auditGivenToResident: string | null;
+  correctionsDue: string | null;
+  correctionsSubmitted: string | null;
+  auditFinalized: string | null;
+  reviewer: string;
+  progressReview: string;
+  remarks: string;
+}
+
+export interface MaterialsReview {
+  numIssues: number;
+  exceptions: number;
+  reviewStart: string | null;
+  auditGiven: string | null;
+  correctionsDue: string | null;
+  pccSignoffSent: string | null;
+  pccSignoffRcvd: string | null;
+  hmaSignoffSent: string | null;
+  hmaSignoffRcvd: string | null;
+  soilsSignoffSent: string | null;
+  soilsSignoffRcvd: string | null;
+  materialsCertDate: string | null;
+  exceptionLetterDate: string | null;
+  reviewer: string;
+  remarks: string;
+}
+
+export interface PerformancePeriodRow {
+  type: string;
+  required: string;
+  yearPlaced: string;
+  inspectionNeeded: boolean;
+  repairsNeeded: boolean;
+  letterSent: string | null;
+  repairsMade: boolean;
+  bond: string;
+  approvedLetterSent: string | null;
+}
+
+export interface DbeCloseOut {
+  commitmentPct: number;
+  bc2115: boolean;
+  allSbe2115: boolean;
+  approved: boolean;
+  goalMet: boolean;
+  dbeFinalDocSbe2028: boolean;
+  waiverRequested: boolean;
+  waiverGranted: boolean;
+  packet2028Approved: boolean;
+  eeoRemarks: string;
+  eeoRepresentative: string;
+}
+
+export interface FinalReview {
+  finalFromDistrict: FinalFromDistrict;
+  documentationReview: DocumentationReview;
+  materialsReview: MaterialsReview;
+  performancePeriod: PerformancePeriodRow[];
+  dbeCloseOut: DbeCloseOut;
 }
 
 /**

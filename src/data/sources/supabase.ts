@@ -272,6 +272,30 @@ function rowToContract(r: Record<string, unknown>): Contract {
     inventoryCount: (r.inventory_count as number) ?? 0,
     readyForReviewCount: (r.ready_for_review_count as number) ?? 0,
     summary: (r.summary as ContractSummary) ?? ({} as ContractSummary),
+    // sub-tab data lives in jsonb columns once brief 12 adds them; default empty.
+    insurance:
+      (r.insurance as Contract["insurance"]) ??
+      ({
+        contractorNo: "",
+        primeContractorName: "",
+        itemNo: "",
+        finalAcceptanceDate: null,
+        pctComplete: 0,
+        pctCompleteDate: null,
+        policies: [],
+        railroad: [],
+      } as Contract["insurance"]),
+    subcontractors: (r.subcontractors as Contract["subcontractors"]) ?? [],
+    projectDocuments: (r.project_documents as Contract["projectDocuments"]) ?? [],
+    finalReview:
+      (r.final_review as Contract["finalReview"]) ??
+      ({
+        finalFromDistrict: {} as Contract["finalReview"]["finalFromDistrict"],
+        documentationReview: {} as Contract["finalReview"]["documentationReview"],
+        materialsReview: {} as Contract["finalReview"]["materialsReview"],
+        performancePeriod: [],
+        dbeCloseOut: {} as Contract["finalReview"]["dbeCloseOut"],
+      } as Contract["finalReview"]),
   };
 }
 

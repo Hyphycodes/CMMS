@@ -20,6 +20,8 @@ import type {
   LedgerEntry,
   EOIEntry,
   PayItemMaterialStatus,
+  SubcontractorRow,
+  ProjectDocumentRow,
 } from "@/domain/types";
 import { getDataSource } from "@/data/dataSource";
 import { DEFAULT_SEED_CONFIG, buildOverlaidDetail } from "@/data/seed/generate";
@@ -88,6 +90,10 @@ interface State {
   setLedger(itemId: string, rows: LedgerEntry[]): void;
   setEoi(itemId: string, rows: EOIEntry[]): void;
   setPayItemMaterialStatus(itemId: string, payItemNumber: string, status: PayItemMaterialStatus, note?: string): void;
+
+  // contract sub-tabs (brief 06) — in-memory until persistence lands in brief 12
+  addSubcontractor(contractId: string, row: SubcontractorRow): void;
+  addProjectDocument(contractId: string, row: ProjectDocumentRow): void;
 
   // samples + tests (briefs 03–04)
   upsertSample(sample: Sample): void;
@@ -370,6 +376,24 @@ export const useStore = create<State>((set, get) => ({
     );
   },
 
+  addSubcontractor(contractId, row) {
+    if (!canDo(get().currentUser, "author_contract")) {
+      get().pushToast("error", "Your role can't add subcontractors.");
+      return;
+    }
+    updateContractInMemory(get, set, contractId, (c) => ({ ...c, subcontractors: [...c.subcontractors, row] }));
+    get().pushToast("info", "Subcontractor added (syncs to the backend in brief 12).");
+  },
+
+  addProjectDocument(contractId, row) {
+    if (!canDo(get().currentUser, "author_contract")) {
+      get().pushToast("error", "Your role can't add documents.");
+      return;
+    }
+    updateContractInMemory(get, set, contractId, (c) => ({ ...c, projectDocuments: [...c.projectDocuments, row] }));
+    get().pushToast("info", "Document added (file upload + storage lands in brief 12).");
+  },
+
   upsertSample(sample) {
     if (!canDo(get().currentUser, "create_sample")) {
       get().pushToast("error", "Your role can't create or edit samples.");
@@ -504,6 +528,16 @@ function recomputeCounts(get: () => State, set: (p: Partial<State>) => void, aff
     contracts,
     contractsById: new Map(contracts.map((c) => [c.id, c])),
   });
+}
+
+function updateContractInMemory(
+  get: () => State,
+  set: (p: Partial<State>) => void,
+  contractId: string,
+  fn: (c: Contract) => Contract,
+) {
+  const contracts = get().contracts.map((c) => (c.id === contractId ? fn(c) : c));
+  set({ contracts, contractsById: new Map(contracts.map((c) => [c.id, c])) });
 }
 
 function recomputeContractCounts(get: () => State, set: (p: Partial<State>) => void, contractId: string) {

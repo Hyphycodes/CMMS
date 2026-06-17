@@ -1,10 +1,17 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import type { ColumnDef } from "@tanstack/react-table";
 import { useStore } from "@/store/store";
-import type { ContractSummary } from "@/domain/types";
+import type { Contract, ContractSummary, ProjectDocumentRow, SubcontractorRow } from "@/domain/types";
 import type { PillTone } from "@/domain/status";
 import { Pill } from "@/components/ui/Pill";
+import { TabBar } from "@/components/ui/TabBar";
+import { FieldGroup } from "@/components/ui/FieldGroup";
+import { DataGrid } from "@/components/ui/DataGrid";
+import { IntelligentSearch } from "@/components/ui/IntelligentSearch";
 import { ChevronDown } from "@/components/ui/icons";
+import { CONTRACTORS, DESIGNER_FIRMS } from "@/data/reference";
+import type { Field } from "@/lib/fields";
 import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 
 type FieldType = "text" | "mono" | "date" | "money" | "number" | "percent" | "days";
@@ -24,7 +31,7 @@ const CARDS: CardDef[] = [
     title: "Contract Info",
     defaultOpen: true,
     fields: [
-      { label: "Contract Number", key: "section", type: "mono" }, // section incl. number context
+      { label: "Contract Number", key: "section", type: "mono" },
       { label: "Job Description", key: "jobDescription", type: "text" },
       { label: "Route", key: "route", type: "text" },
       { label: "Section", key: "section", type: "text" },
@@ -103,11 +110,14 @@ const STATUS_TONE: Record<string, PillTone> = {
   Closed: "slate",
 };
 
+const TABS = ["Summary", "Insurance", "Project Documents", "Subcontracting", "Final Review"] as const;
+type Tab = (typeof TABS)[number];
+
 export function ContractSummaryPage() {
   const { contractId } = useParams();
   const contract = useStore((s) => (contractId ? s.contract(contractId) : undefined));
   const canAccess = useStore((s) => (contractId ? s.canAccessContract(contractId) : false));
-  const [showEmpty, setShowEmpty] = useState(false);
+  const [tab, setTab] = useState<Tab>("Summary");
 
   const pctComplete = useMemo(() => {
     if (!contract) return 0;
@@ -126,11 +136,20 @@ export function ContractSummaryPage() {
     );
   }
   const s = contract.summary;
+  const tabs = TABS.map((t) => ({
+    id: t,
+    label: t,
+    count:
+      t === "Project Documents"
+        ? contract.projectDocuments.length
+        : t === "Subcontracting"
+          ? contract.subcontractors.length
+          : 0,
+  }));
 
   return (
     <div className="scroll-thin h-full overflow-y-auto">
       <div className="mx-auto max-w-5xl px-6 py-6">
-        {/* header */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2.5">
@@ -148,7 +167,6 @@ export function ContractSummaryPage() {
           </Link>
         </div>
 
-        {/* key fields strip — the handful that get watched */}
         <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <KeyStat label="Current Amount" value={formatMoney(s.currentContractAmount)} />
           <KeyStat label="Paid to Date" value={formatMoney(s.totalPaidToDate)} sub={`${pctComplete}% of contract`} />
@@ -156,87 +174,358 @@ export function ContractSummaryPage() {
           <KeyStat label="Prime Contractor" value={s.primeContractor} />
         </div>
 
-        {/* disclosure toggle */}
-        <div className="mt-6 flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-faint">Contract Summary</h2>
-          <label className="flex items-center gap-2 text-sm text-ink-soft">
-            <input
-              type="checkbox"
-              className="h-4 w-4 cursor-pointer accent-accent"
-              checked={showEmpty}
-              onChange={(e) => setShowEmpty(e.target.checked)}
-            />
-            Show empty fields
-          </label>
-        </div>
+        <TabBar tabs={tabs} active={tab} onChange={setTab} className="mt-6" />
 
-        {/* cards */}
-        <div className="mt-3 space-y-3">
-          {CARDS.map((card) => (
-            <Card key={card.title} card={card} summary={s} showEmpty={showEmpty} />
-          ))}
+        <div className="mt-4">
+          {tab === "Summary" && <SummaryTab summary={s} />}
+          {tab === "Insurance" && <InsuranceTab contract={contract} />}
+          {tab === "Project Documents" && <DocumentsTab contract={contract} />}
+          {tab === "Subcontracting" && <SubcontractingTab contract={contract} />}
+          {tab === "Final Review" && <FinalReviewTab contract={contract} />}
         </div>
       </div>
     </div>
   );
 }
 
-function Card({
-  card,
-  summary,
-  showEmpty,
-}: {
-  card: CardDef;
-  summary: ContractSummary;
-  showEmpty: boolean;
-}) {
-  const [open, setOpen] = useState(card.defaultOpen);
+// --- Summary (unchanged) ---------------------------------------------------
 
+function SummaryTab({ summary }: { summary: ContractSummary }) {
+  const [showEmpty, setShowEmpty] = useState(false);
+  return (
+    <>
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-faint">Contract Summary</h2>
+        <label className="flex items-center gap-2 text-sm text-ink-soft">
+          <input type="checkbox" className="h-4 w-4 cursor-pointer accent-accent" checked={showEmpty} onChange={(e) => setShowEmpty(e.target.checked)} />
+          Show empty fields
+        </label>
+      </div>
+      <div className="mt-3 space-y-3">
+        {CARDS.map((card) => (
+          <Card key={card.title} card={card} summary={summary} showEmpty={showEmpty} />
+        ))}
+      </div>
+    </>
+  );
+}
+
+function Card({ card, summary, showEmpty }: { card: CardDef; summary: ContractSummary; showEmpty: boolean }) {
+  const [open, setOpen] = useState(card.defaultOpen);
   const visibleFields = card.fields.filter((f) => showEmpty || !isEmpty(summary[f.key]));
   const hiddenCount = card.fields.length - visibleFields.length;
-
   return (
     <section className="overflow-hidden rounded-card border border-line bg-surface">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 px-4 py-3 text-left transition hover:bg-canvas"
-      >
+      <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center gap-2 px-4 py-3 text-left transition hover:bg-canvas">
         <ChevronDown className={["text-base text-ink-faint transition", open ? "" : "-rotate-90"].join(" ")} />
         <span className="text-sm font-semibold text-ink">{card.title}</span>
         <span className="text-xs text-ink-faint">{visibleFields.length} fields</span>
-        {!showEmpty && hiddenCount > 0 && (
-          <span className="ml-auto text-xs text-ink-faint">{hiddenCount} empty hidden</span>
-        )}
+        {!showEmpty && hiddenCount > 0 && <span className="ml-auto text-xs text-ink-faint">{hiddenCount} empty hidden</span>}
       </button>
       {open && (
         <div className="grid grid-cols-1 gap-x-8 gap-y-4 border-t border-line px-4 py-4 sm:grid-cols-2 lg:grid-cols-3">
           {visibleFields.map((f) => (
             <div key={f.label} className="min-w-0">
               <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">{f.label}</div>
-              <div
-                className={["truncate text-sm text-ink", f.type === "mono" ? "font-mono" : ""].join(" ")}
-                title={String(summary[f.key] ?? "")}
-              >
-                {formatField(summary[f.key], f.type)}
+              <div className={["truncate text-sm text-ink", f.type === "mono" ? "font-mono" : ""].join(" ")} title={String(summary[f.key] ?? "")}>
+                {formatSummary(summary[f.key], f.type)}
               </div>
             </div>
           ))}
-          {visibleFields.length === 0 && (
-            <p className="text-sm text-ink-faint">All fields in this section are empty.</p>
-          )}
+          {visibleFields.length === 0 && <p className="text-sm text-ink-faint">All fields in this section are empty.</p>}
         </div>
       )}
     </section>
   );
 }
 
+// --- Insurance -------------------------------------------------------------
+
+function InsuranceTab({ contract }: { contract: Contract }) {
+  const ins = contract.insurance;
+  const s = contract.summary;
+  const block: Field[] = [
+    { label: "Contractor No", value: ins.contractorNo, type: "mono" },
+    { label: "Prime Contractor Name", value: ins.primeContractorName },
+    { label: "Letting Date", value: s.lettingDate, type: "date" },
+    { label: "Item No", value: ins.itemNo },
+    { label: "Final Acceptance Date", value: ins.finalAcceptanceDate, type: "date" },
+    { label: "Award Date", value: s.awardDate, type: "date" },
+    { label: "% Complete", value: ins.pctComplete, type: "percent" },
+    { label: "% Complete Date", value: ins.pctCompleteDate, type: "date" },
+  ];
+  const rrColumns: ColumnDef<Contract["insurance"]["railroad"][number]>[] = [
+    { id: "policyNo", accessorKey: "policyNo", header: "Policy No", size: 140 },
+    { id: "company", accessorKey: "company", header: "Company", size: 200, meta: { grow: true } },
+    { id: "expiration", accessorKey: "expiration", header: "Expiration", size: 130, cell: ({ getValue }) => formatDate((getValue() as string) ?? null) },
+    { id: "approvalRequested", accessorKey: "approvalRequested", header: "Approval Requested", size: 160, cell: ({ getValue }) => formatDate((getValue() as string) ?? null) },
+    { id: "approvalReceipt", accessorKey: "approvalReceipt", header: "Approval Receipt", size: 150, cell: ({ getValue }) => formatDate((getValue() as string) ?? null) },
+    { id: "workCompleted", accessorKey: "workCompleted", header: "Work Completed", size: 150, cell: ({ getValue }) => formatDate((getValue() as string) ?? null) },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <FieldGroup title="Contractor Insurance" fields={block} showEmpty />
+      <section className="overflow-hidden rounded-card border border-line bg-surface">
+        <div className="border-b border-line px-4 py-3 text-sm font-semibold text-ink">Policy Status</div>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-canvas text-left text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+              <th className="px-4 py-2">Policy</th>
+              <th className="px-4 py-2">Status</th>
+              <th className="px-4 py-2">Expiration</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ins.policies.map((p) => (
+              <tr key={p.kind} className="border-t border-line/70">
+                <td className="px-4 py-2 text-ink">{p.kind}</td>
+                <td className="px-4 py-2 text-ink-soft">{p.status}</td>
+                <td className="px-4 py-2 text-ink-soft">{formatDate(p.expiration)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+      <div>
+        <h3 className="mb-2 text-sm font-semibold text-ink">Railroad Insurance</h3>
+        <div className="h-[260px]">
+          <DataGrid data={ins.railroad} columns={rrColumns} getRowId={(r) => r.policyNo} emptyMessage="No records to display." />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Project Documents -----------------------------------------------------
+
+function DocumentsTab({ contract }: { contract: Contract }) {
+  const addProjectDocument = useStore((s) => s.addProjectDocument);
+  const canAuthor = useStore((s) => s.can("author_contract"));
+  const columns: ColumnDef<ProjectDocumentRow>[] = [
+    { id: "date", accessorKey: "date", header: "Date", size: 120, cell: ({ getValue }) => formatDate(getValue() as string) },
+    { id: "title", accessorKey: "title", header: "Title", size: 260, meta: { grow: true } },
+    { id: "subject", accessorKey: "subject", header: "Subject", size: 140 },
+    { id: "from", accessorKey: "from", header: "From", size: 130 },
+    { id: "attachment", accessorKey: "attachment", header: "Attachment", size: 220,
+      cell: ({ row }) => (row.original.hasFile ? <span className="text-accent">📎 {row.original.attachment}</span> : <span className="text-ink-faint">—</span>) },
+    { id: "origin", accessorKey: "origin", header: "Origin", size: 110 },
+  ];
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-ink">Project Documents — the contract file repository</h3>
+        {canAuthor && (
+          <button
+            onClick={() =>
+              addProjectDocument(contract.id, {
+                id: `doc_new_${Date.now()}`,
+                date: new Date().toISOString().slice(0, 10),
+                title: "New Document",
+                subject: "Correspondence",
+                from: "",
+                attachment: "pending-upload.pdf",
+                origin: "IDOT",
+                hasFile: false,
+              })
+            }
+            className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg transition hover:bg-accent-hover"
+          >
+            + Upload Document
+          </button>
+        )}
+      </div>
+      <div className="h-[440px]">
+        <DataGrid
+          data={contract.projectDocuments}
+          columns={columns}
+          getRowId={(r) => r.id}
+          toolbar
+          searchable
+          searchPlaceholder="Filter documents…"
+          countLabel="documents"
+          globalSearchText={(r) => `${r.title} ${r.subject} ${r.from} ${r.origin}`}
+          emptyMessage="No records to display."
+        />
+      </div>
+    </div>
+  );
+}
+
+// --- Subcontracting --------------------------------------------------------
+
+function SubcontractingTab({ contract }: { contract: Contract }) {
+  const addSubcontractor = useStore((s) => s.addSubcontractor);
+  const canAuthor = useStore((s) => s.can("author_contract"));
+  const companies = useMemo(() => [...CONTRACTORS, ...DESIGNER_FIRMS].map((name, i) => ({ name, number: `C-${10000 + i}` })), []);
+  const columns: ColumnDef<SubcontractorRow>[] = [
+    { id: "createDate", accessorKey: "createDate", header: "Create Date", size: 140, cell: ({ getValue }) => formatDate(getValue() as string) },
+    { id: "companyNumber", accessorKey: "companyNumber", header: "Company Number", size: 160 },
+    { id: "name", accessorKey: "name", header: "Subcontractor Name", size: 320, meta: { grow: true } },
+  ];
+  return (
+    <div className="space-y-3">
+      {canAuthor && (
+        <div className="max-w-md">
+          <label className="mb-1 block text-xs font-medium text-ink-soft">Add Subcontractor</label>
+          <IntelligentSearch
+            items={companies}
+            columns={[
+              { header: "Number", get: (c) => c.number, mono: true },
+              { header: "Company", get: (c) => c.name, grow: true },
+            ]}
+            getKey={(c) => c.number}
+            getSearchText={(c) => `${c.number} ${c.name}`}
+            onSelect={(c) =>
+              addSubcontractor(contract.id, {
+                createDate: new Date().toISOString().slice(0, 10),
+                companyNumber: c.number,
+                name: c.name,
+              })
+            }
+            placeholder="Search companies to add…"
+          />
+        </div>
+      )}
+      <div className="h-[420px]">
+        <DataGrid data={contract.subcontractors} columns={columns} getRowId={(r) => `${r.companyNumber}:${r.createDate}`} emptyMessage="No records to display." />
+      </div>
+    </div>
+  );
+}
+
+// --- Final Review ----------------------------------------------------------
+
+function FinalReviewTab({ contract }: { contract: Contract }) {
+  const [showEmpty, setShowEmpty] = useState(true);
+  const fr = contract.finalReview;
+  const d = fr.finalFromDistrict;
+  const dr = fr.documentationReview;
+  const mr = fr.materialsReview;
+  const dbe = fr.dbeCloseOut;
+
+  const finalFromDistrict: Field[] = [
+    { label: "Deadline for Final FRC Bills", value: d.deadlineForFinalFrcBills, type: "date" },
+    { label: "Final Inspection Letters", value: d.finalInspectionLetters, type: "date" },
+    { label: "All Pay Items Final", value: d.allPayItemsFinal, type: "bool" },
+    { label: "FQ Sent", value: d.fqSent, type: "date" },
+    { label: "FQ Agree", value: d.fqAgree, type: "date" },
+    { label: "FQ Certified", value: d.fqCertified, type: "date" },
+    { label: "FQ Received", value: d.fqReceived, type: "date" },
+    { label: "Challenged FQ", value: d.challengedFq, type: "bool" },
+    { label: "Intent to File Claim", value: d.intentToFileClaim, type: "bool" },
+    { label: "Claim L1", value: d.claimL1, type: "date" },
+    { label: "Claim L2", value: d.claimL2, type: "date" },
+    { label: "Claim Resolved", value: d.claimResolved, type: "date" },
+    { label: "Qty Adjustment Letter", value: d.qtyAdjustmentLetter, type: "date" },
+    { label: "OPs Signoff", value: d.opsSignoff, type: "date" },
+    { label: "Final Inspection BC-71", value: d.finalInspectionBc71, type: "date" },
+    { label: "FPE BC 111", value: d.fpeBc111, type: "date" },
+    { label: "Local Agency Cert BC 608", value: d.localAgencyCertBc608, type: "date" },
+    { label: "Records/Payroll Retention", value: d.recordsPayrollRetention, type: "date" },
+    { label: "Records Location", value: d.recordsLocation },
+    { label: "State Completion Notice", value: d.stateCompletionNotice, type: "date" },
+    { label: "For CO to Review", value: d.forCoToReview, type: "bool" },
+    { label: "Project Control Manager", value: d.projectControlManager },
+  ];
+  const documentationReview: Field[] = [
+    { label: "Records Turned In", value: dr.recordsTurnedIn, type: "date" },
+    { label: "Audit Start", value: dr.auditStart, type: "date" },
+    { label: "# Issues", value: dr.numIssues, type: "number" },
+    { label: "Audit Given to Resident", value: dr.auditGivenToResident, type: "date" },
+    { label: "Corrections Due", value: dr.correctionsDue, type: "date" },
+    { label: "Corrections Submitted", value: dr.correctionsSubmitted, type: "date" },
+    { label: "Audit Finalized", value: dr.auditFinalized, type: "date" },
+    { label: "Reviewer", value: dr.reviewer },
+    { label: "Progress Review", value: dr.progressReview },
+    { label: "Remarks", value: dr.remarks },
+  ];
+  const materialsReview: Field[] = [
+    { label: "# Issues", value: mr.numIssues, type: "number" },
+    { label: "Exceptions", value: mr.exceptions, type: "number" },
+    { label: "Review Start", value: mr.reviewStart, type: "date" },
+    { label: "Audit Given", value: mr.auditGiven, type: "date" },
+    { label: "Corrections Due", value: mr.correctionsDue, type: "date" },
+    { label: "PCC Signoff Sent", value: mr.pccSignoffSent, type: "date" },
+    { label: "PCC Signoff Rcvd", value: mr.pccSignoffRcvd, type: "date" },
+    { label: "HMA Signoff Sent", value: mr.hmaSignoffSent, type: "date" },
+    { label: "HMA Signoff Rcvd", value: mr.hmaSignoffRcvd, type: "date" },
+    { label: "Soils Signoff Sent", value: mr.soilsSignoffSent, type: "date" },
+    { label: "Soils Signoff Rcvd", value: mr.soilsSignoffRcvd, type: "date" },
+    { label: "Materials Cert Date", value: mr.materialsCertDate, type: "date" },
+    { label: "Exception Letter Date", value: mr.exceptionLetterDate, type: "date" },
+    { label: "Reviewer", value: mr.reviewer },
+    { label: "Remarks", value: mr.remarks },
+  ];
+  const dbeCloseOut: Field[] = [
+    { label: "Commitment %", value: dbe.commitmentPct, type: "percent" },
+    { label: "BC 2115", value: dbe.bc2115, type: "bool" },
+    { label: "All SBE 2115", value: dbe.allSbe2115, type: "bool" },
+    { label: "Approved", value: dbe.approved, type: "bool" },
+    { label: "Goal Met", value: dbe.goalMet, type: "bool" },
+    { label: "DBE Final Doc SBE 2028", value: dbe.dbeFinalDocSbe2028, type: "bool" },
+    { label: "Waiver Requested", value: dbe.waiverRequested, type: "bool" },
+    { label: "Waiver Granted", value: dbe.waiverGranted, type: "bool" },
+    { label: "2028 Packet Approved", value: dbe.packet2028Approved, type: "bool" },
+    { label: "EEO Remarks", value: dbe.eeoRemarks },
+    { label: "EEO Representative", value: dbe.eeoRepresentative },
+  ];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-faint">Final Review — close-out dashboard</h2>
+        <label className="flex items-center gap-2 text-sm text-ink-soft">
+          <input type="checkbox" className="h-4 w-4 cursor-pointer accent-accent" checked={showEmpty} onChange={(e) => setShowEmpty(e.target.checked)} />
+          Show empty fields
+        </label>
+      </div>
+      <FieldGroup title="Final from District" fields={finalFromDistrict} showEmpty={showEmpty} />
+      <FieldGroup title="Documentation Review" fields={documentationReview} showEmpty={showEmpty} defaultOpen={false} />
+      <FieldGroup title="Materials Review" fields={materialsReview} showEmpty={showEmpty} defaultOpen={false} />
+      <section className="overflow-hidden rounded-card border border-line bg-surface">
+        <div className="border-b border-line px-4 py-3 text-sm font-semibold text-ink">Performance Period Status</div>
+        {fr.performancePeriod.length === 0 ? (
+          <p className="px-4 py-4 text-sm text-ink-faint">No records to display.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-canvas text-left text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+                {["Type", "Required", "Year Placed", "Inspection Needed", "Repairs Needed", "Letter Sent", "Repairs Made", "Bond", "Approved Letter Sent"].map((h) => (
+                  <th key={h} className="whitespace-nowrap px-3 py-2">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {fr.performancePeriod.map((r, i) => (
+                <tr key={i} className="border-t border-line/70">
+                  <td className="px-3 py-2">{r.type}</td>
+                  <td className="px-3 py-2">{r.required}</td>
+                  <td className="px-3 py-2">{r.yearPlaced}</td>
+                  <td className="px-3 py-2">{r.inspectionNeeded ? "Yes" : "No"}</td>
+                  <td className="px-3 py-2">{r.repairsNeeded ? "Yes" : "No"}</td>
+                  <td className="px-3 py-2">{formatDate(r.letterSent)}</td>
+                  <td className="px-3 py-2">{r.repairsMade ? "Yes" : "No"}</td>
+                  <td className="px-3 py-2">{r.bond}</td>
+                  <td className="px-3 py-2">{formatDate(r.approvedLetterSent)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+      <FieldGroup title="DBE Close Out" fields={dbeCloseOut} showEmpty={showEmpty} defaultOpen={false} />
+    </div>
+  );
+}
+
+// --- shared bits -----------------------------------------------------------
+
 function KeyStat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-card border border-line bg-surface px-4 py-3">
       <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">{label}</div>
-      <div className="mt-0.5 truncate text-base font-semibold text-ink" title={value}>
-        {value}
-      </div>
+      <div className="mt-0.5 truncate text-base font-semibold text-ink" title={value}>{value}</div>
       {sub && <div className="text-xs text-ink-soft">{sub}</div>}
     </div>
   );
@@ -246,7 +535,7 @@ function isEmpty(v: unknown): boolean {
   return v === null || v === undefined || v === "";
 }
 
-function formatField(v: unknown, type: FieldType): string {
+function formatSummary(v: unknown, type: FieldType): string {
   if (isEmpty(v)) return "—";
   switch (type) {
     case "date":

@@ -253,6 +253,157 @@ function generateContract(index: number, rng: Rng): Contract {
     Math.round(summary.currentContractTime * rng.float(0.1, 0.95)),
   );
 
+  const closing = contractStatus === "Completed" || contractStatus === "Closed";
+  const fut = () => isoDate(now + rng.int(60, 540) * MS_DAY);
+  const past = () => isoDate(now - rng.int(10, 200) * MS_DAY);
+  const maybePast = (p = 0.6) => (rng.bool(p) ? past() : null);
+  const closeDate = (p = 0.8) => (closing && rng.bool(p) ? past() : null);
+
+  const insurance = {
+    contractorNo: summary.primeContractorId,
+    primeContractorName: contractor,
+    itemNo: String(rng.int(1, 6)),
+    finalAcceptanceDate: closeDate(0.9),
+    pctComplete: summary.currentContractAmount
+      ? Math.round((summary.totalPaidToDate / summary.currentContractAmount) * 100)
+      : 0,
+    pctCompleteDate: past(),
+    policies: (
+      ["General Liability", "Automotive Liability", "Umbrella Liability", "Workman's Compensation"] as const
+    ).map((kind) => ({
+      kind,
+      status: rng.weighted<string>([["Blanket Certification", 5], ["On File", 3], ["Expired", 1]]),
+      expiration: fut(),
+    })),
+    railroad: rng.bool(0.15)
+      ? [
+          {
+            policyNo: `RR-${rng.int(10000, 99999)}`,
+            company: rng.pick(["BNSF", "Union Pacific", "CN", "Norfolk Southern"]),
+            expiration: fut(),
+            approvalRequested: maybePast(),
+            approvalReceipt: maybePast(0.4),
+            workCompleted: closeDate(0.5),
+          },
+        ]
+      : [],
+  };
+
+  const subcontractors = Array.from({ length: rng.int(0, 5) }, () => ({
+    createDate: isoDate(awardDate + rng.int(10, 120) * MS_DAY),
+    companyNumber: `C-${rng.int(10000, 99999)}`,
+    name: rng.pick([...CONTRACTORS, ...DESIGNER_FIRMS]),
+  }));
+
+  const DOC_TITLES = [
+    "Preconstruction Meeting Minutes",
+    "Submittal — Mix Design",
+    "RFI Response",
+    "Change Order Backup",
+    "Progress Schedule Update",
+    "Environmental Compliance Letter",
+    "Material Certification Packet",
+    "Weekly Payroll Certification",
+  ];
+  const DOC_SUBJECTS = ["Meeting", "Submittal", "RFI", "Correspondence", "Schedule", "Compliance", "Certification", "Payroll"];
+  const projectDocuments = Array.from({ length: rng.int(0, 6) }, (_, i) => {
+    const t = rng.int(0, DOC_TITLES.length - 1);
+    return {
+      id: `doc_${index}_${i}`,
+      date: isoDate(executedDate + rng.int(1, 300) * MS_DAY),
+      title: DOC_TITLES[t],
+      subject: DOC_SUBJECTS[t],
+      from: rng.pick(STAFF_NAMES),
+      attachment: `${DOC_TITLES[t].replace(/\s+/g, "_")}.pdf`,
+      origin: rng.weighted<string>([["IDOT", 6], ["Contractor", 3], ["Consultant", 1]]),
+      hasFile: rng.bool(0.8),
+    };
+  });
+
+  const finalReview = {
+    finalFromDistrict: {
+      deadlineForFinalFrcBills: closeDate(),
+      finalInspectionLetters: closeDate(),
+      allPayItemsFinal: closing && rng.bool(0.7),
+      fqSent: closeDate(),
+      fqAgree: closeDate(0.6),
+      fqCertified: closeDate(0.5),
+      fqReceived: closeDate(0.5),
+      challengedFq: rng.bool(0.1),
+      intentToFileClaim: rng.bool(0.08),
+      claimL1: rng.bool(0.06) ? past() : null,
+      claimL2: null,
+      claimResolved: null,
+      qtyAdjustmentLetter: closeDate(0.4),
+      opsSignoff: closeDate(0.5),
+      finalInspectionBc71: closeDate(0.6),
+      fpeBc111: closeDate(0.4),
+      localAgencyCertBc608: closeDate(0.3),
+      recordsPayrollRetention: closeDate(0.4),
+      recordsLocation: closing ? rng.pick(["District 4 Records", "Central Files", "Field Office"]) : "",
+      stateCompletionNotice: closeDate(0.5),
+      forCoToReview: closing && rng.bool(0.3),
+      projectControlManager: rng.pick(STAFF_NAMES),
+    },
+    documentationReview: {
+      recordsTurnedIn: closeDate(0.7),
+      auditStart: closeDate(0.6),
+      numIssues: closing ? rng.int(0, 12) : 0,
+      auditGivenToResident: closeDate(0.5),
+      correctionsDue: closeDate(0.4),
+      correctionsSubmitted: closeDate(0.4),
+      auditFinalized: closeDate(0.3),
+      reviewer: closing ? rng.pick(STAFF_NAMES) : "",
+      progressReview: closing ? rng.pick(["On Track", "Behind", "Complete"]) : "",
+      remarks: "",
+    },
+    materialsReview: {
+      numIssues: closing ? rng.int(0, 8) : 0,
+      exceptions: closing ? rng.int(0, 4) : 0,
+      reviewStart: closeDate(0.6),
+      auditGiven: closeDate(0.5),
+      correctionsDue: closeDate(0.4),
+      pccSignoffSent: closeDate(0.5),
+      pccSignoffRcvd: closeDate(0.4),
+      hmaSignoffSent: closeDate(0.5),
+      hmaSignoffRcvd: closeDate(0.4),
+      soilsSignoffSent: closeDate(0.4),
+      soilsSignoffRcvd: closeDate(0.3),
+      materialsCertDate: closeDate(0.4),
+      exceptionLetterDate: rng.bool(0.1) ? past() : null,
+      reviewer: closing ? rng.pick(STAFF_NAMES) : "",
+      remarks: "",
+    },
+    performancePeriod: rng.bool(0.4)
+      ? [
+          {
+            type: rng.pick(["HMA", "PCC", "Pavement Marking", "Seeding"]),
+            required: `${rng.int(1, 3)} year`,
+            yearPlaced: String(2020 + rng.int(0, 5)),
+            inspectionNeeded: rng.bool(0.5),
+            repairsNeeded: rng.bool(0.3),
+            letterSent: maybePast(0.4),
+            repairsMade: rng.bool(0.3),
+            bond: rng.pick(["Maintenance Bond", "Warranty Bond", "—"]),
+            approvedLetterSent: maybePast(0.3),
+          },
+        ]
+      : [],
+    dbeCloseOut: {
+      commitmentPct: summary.dbeCommittedPct,
+      bc2115: closing && rng.bool(0.6),
+      allSbe2115: closing && rng.bool(0.5),
+      approved: closing && rng.bool(0.5),
+      goalMet: rng.bool(0.7),
+      dbeFinalDocSbe2028: closing && rng.bool(0.5),
+      waiverRequested: rng.bool(0.1),
+      waiverGranted: rng.bool(0.05),
+      packet2028Approved: closing && rng.bool(0.4),
+      eeoRemarks: "",
+      eeoRepresentative: rng.pick(STAFF_NAMES),
+    },
+  };
+
   return {
     id: `ct_${index}`,
     number,
@@ -263,6 +414,10 @@ function generateContract(index: number, rng: Rng): Contract {
     inventoryCount: 0,
     readyForReviewCount: 0,
     summary,
+    insurance,
+    subcontractors,
+    projectDocuments,
+    finalReview,
   };
 }
 
