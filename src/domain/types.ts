@@ -111,6 +111,33 @@ export interface PayItem {
   final?: boolean; // "Final a pay item" (brief 08)
 }
 
+/** Pay Estimate (Ch. 6) — brief 09. */
+export type PayEstimateStatus = "Draft" | "Submitted" | "Approved" | "Paid";
+export const PAY_ESTIMATE_STATUSES: PayEstimateStatus[] = ["Draft", "Submitted", "Approved", "Paid"];
+
+export interface PayEstimateLine {
+  payItemNumber: string;
+  description: string;
+  unit: string;
+  quantityThis: number;
+  unitPrice: number;
+  amount: number;
+}
+
+export interface PayEstimate {
+  id: string;
+  contractId: string;
+  number: number;
+  periodStart: string;
+  periodEnd: string;
+  status: PayEstimateStatus;
+  submittedBy: string | null;
+  submittedAt: string | null;
+  lines: PayEstimateLine[];
+  thisEstimateTotal: number;
+  toDateTotal: number;
+}
+
 /** Quantity Book placement entry (Ch. 4) — brief 08. */
 export interface PlacementEntry {
   id: string;

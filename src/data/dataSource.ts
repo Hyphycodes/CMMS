@@ -21,6 +21,7 @@ import type {
   DiarySuspension,
   PlacementEntry,
   PayItem,
+  PayEstimate,
 } from "@/domain/types";
 import type { World, SeedConfig } from "./seed/generate";
 
@@ -50,6 +51,8 @@ export interface LoadResult {
   placementDeltas: Record<string, PlacementEntry>;
   /** Pay item edits (final flag, authorization propagation), keyed `${contractId}:${number}` */
   payItemDeltas: Record<string, PayItem>;
+  /** Pay estimate create/submit, keyed by estimate id (brief 09) */
+  payEstimateDeltas: Record<string, PayEstimate>;
 }
 
 export interface InventoryStatusUpdate {
@@ -95,6 +98,9 @@ export interface DataSource {
   // Quantity Book + Authorizations (briefs 08 + 10).
   persistPlacement(placement: PlacementEntry): Promise<void>;
   persistPayItem(contractId: string, payItem: PayItem): Promise<void>;
+
+  // Pay Estimate (brief 09).
+  persistPayEstimate(estimate: PayEstimate): Promise<void>;
 }
 
 let cached: DataSource | null = null;

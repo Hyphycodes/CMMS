@@ -25,7 +25,9 @@ import type {
   DiaryDay,
   DiarySuspension,
   PlacementEntry,
+  PayEstimate,
 } from "@/domain/types";
+import { lineAmount, sumAmounts } from "@/domain/money";
 import { getDataSource } from "@/data/dataSource";
 import { DEFAULT_SEED_CONFIG, buildOverlaidDetail, buildDiaryDay } from "@/data/seed/generate";
 import type { EoiDelta, PayItemMaterialStatusDelta } from "@/data/dataSource";
@@ -61,6 +63,9 @@ interface State {
   // quantity book (brief 08)
   placementsList: PlacementEntry[];
 
+  // pay estimate (brief 09)
+  payEstimatesList: PayEstimate[];
+
   // samples + tests (briefs 03–04)
   samplesList: Sample[];
   testsList: Test[];
@@ -94,6 +99,7 @@ interface State {
   suspensions(contractId: string): DiarySuspension[];
   placementsForContract(contractId: string): PlacementEntry[];
   placementsForPayItem(contractId: string, payItemNumber: string): PlacementEntry[];
+  payEstimatesForContract(contractId: string): PayEstimate[];
 
   // mutations (optimistic)
   setInventoryStatus(ids: string[], status: InventoryStatus, opts?: { note?: string }): void;
@@ -120,6 +126,10 @@ interface State {
   deletePlacement(id: string): void;
   updatePayItem(contractId: string, payItem: PayItem): void;
   finalizePayItem(contractId: string, payItemNumber: string, final: boolean): void;
+
+  // pay estimate (brief 09)
+  createPayEstimate(contractId: string, periodStart: string, periodEnd: string): string | undefined;
+  submitPayEstimate(id: string): void;
 
   // samples + tests (briefs 03–04)
   upsertSample(sample: Sample): void;
@@ -152,6 +162,7 @@ export const useStore = create<State>((set, get) => ({
   suspensionsByContract: new Map(),
 
   placementsList: [],
+  payEstimatesList: [],
 
   samplesList: [],
   testsList: [],
@@ -194,6 +205,7 @@ export const useStore = create<State>((set, get) => ({
         diaryDeltas,
         suspensionsByContract: world.suspensionsByContract,
         placementsList: world.placements,
+        payEstimatesList: world.payEstimates,
         samplesList: world.samples,
         testsList: world.tests,
         testTemplates: world.testTemplates,
@@ -293,6 +305,10 @@ export const useStore = create<State>((set, get) => ({
   placementsForContract: (contractId) => get().placementsList.filter((p) => p.contractId === contractId),
   placementsForPayItem: (contractId, payItemNumber) =>
     get().placementsList.filter((p) => p.contractId === contractId && p.payItemNumber === payItemNumber),
+  payEstimatesForContract: (contractId) =>
+    get()
+      .payEstimatesList.filter((e) => e.contractId === contractId)
+      .sort((a, b) => a.number - b.number),
 
   setInventoryStatus(ids, status, opts) {
     if (ids.length === 0) return;
@@ -579,6 +595,103 @@ export const useStore = create<State>((set, get) => ({
     if (!pi) return;
     get().updatePayItem(contractId, { ...pi, final });
     get().pushToast("success", final ? `Pay item ${payItemNumber} finaled` : `Pay item ${payItemNumber} reopened`);
+  },
+
+  createPayEstimate(contractId, periodStart, periodEnd) {
+    if (!canDo(get().currentUser, "submit_pay_estimate")) {
+      get().pushToast("error", "Your role can't create pay estimates.");
+      return undefined;
+    }
+    const payItems = get().payItemsByContract.get(contractId) ?? [];
+    const eligible = get().placementsList.filter(
+      (p) =>
+        p.contractId === contractId &&
+        p.type === "Placed" &&
+        p.posted &&
+        p.payEstimateId === null &&
+        p.date >= periodStart &&
+        p.date <= periodEnd,
+    );
+    if (eligible.length === 0) {
+      get().pushToast("info", "No eligible placements (Placed, posted, not on a prior estimate) in that period.");
+      return undefined;
+    }
+    const existing = get().payEstimatesList.filter((e) => e.contractId === contractId);
+    const number = existing.length ? Math.max(...existing.map((e) => e.number)) + 1 : 1;
+    const id = `pe_new_${contractId}_${Date.now()}`;
+    const byItem = new Map<string, PlacementEntry[]>();
+    for (const p of eligible) {
+      const arr = byItem.get(p.payItemNumber);
+      if (arr) arr.push(p);
+      else byItem.set(p.payItemNumber, [p]);
+    }
+    const lines = [...byItem.entries()].map(([num, ps]) => {
+      const pi = payItems.find((x) => x.number === num);
+      const qty = ps.reduce((s, p) => s + p.quantity, 0);
+      const price = pi?.unitPrice ?? ps[0].price;
+      return { payItemNumber: num, description: pi?.description ?? "—", unit: pi?.unit ?? "", quantityThis: qty, unitPrice: price, amount: lineAmount(qty, price) };
+    });
+    const thisTotal = sumAmounts(lines.map((l) => l.amount));
+    const priorToDate = existing.reduce((s, e) => s + e.thisEstimateTotal, 0);
+    const estimate: PayEstimate = {
+      id,
+      contractId,
+      number,
+      periodStart,
+      periodEnd,
+      status: "Draft",
+      submittedBy: null,
+      submittedAt: null,
+      lines,
+      thisEstimateTotal: thisTotal,
+      toDateTotal: Math.round((priorToDate + thisTotal) * 100) / 100,
+    };
+    set({ payEstimatesList: [...get().payEstimatesList, estimate] });
+    // mark consumed placements (optimistic) so they can't be double-counted
+    const consumed = new Set(eligible.map((p) => p.id));
+    set({ placementsList: get().placementsList.map((p) => (consumed.has(p.id) ? { ...p, payEstimateId: id } : p)) });
+    void persist(
+      get,
+      set,
+      async (ds) => {
+        await ds.persistPayEstimate(estimate);
+        for (const p of eligible) await ds.persistPlacement({ ...p, payEstimateId: id });
+      },
+      () => {
+        set({
+          payEstimatesList: get().payEstimatesList.filter((e) => e.id !== id),
+          placementsList: get().placementsList.map((p) => (consumed.has(p.id) ? { ...p, payEstimateId: null } : p)),
+        });
+      },
+      "Couldn't create pay estimate",
+    );
+    get().pushToast("success", `Created Estimate #${number} (${lines.length} line items)`);
+    return id;
+  },
+
+  submitPayEstimate(id) {
+    if (!canDo(get().currentUser, "submit_pay_estimate")) {
+      get().pushToast("error", "Your role can't submit pay estimates.");
+      return;
+    }
+    const est = get().payEstimatesList.find((e) => e.id === id);
+    if (!est || est.status !== "Draft") return;
+    const next: PayEstimate = {
+      ...est,
+      status: "Submitted",
+      submittedBy: get().currentUser?.name ?? "",
+      submittedAt: new Date().toISOString().slice(0, 10),
+    };
+    const prev = est;
+    set({ payEstimatesList: get().payEstimatesList.map((e) => (e.id === id ? next : e)) });
+    void persist(
+      get,
+      set,
+      async (ds) => ds.persistPayEstimate(next),
+      () => set({ payEstimatesList: get().payEstimatesList.map((e) => (e.id === id ? prev : e)) }),
+      "Couldn't submit pay estimate",
+    );
+    get().pushToast("success", `Submitted Estimate #${est.number}`);
   },
 
   upsertSample(sample) {

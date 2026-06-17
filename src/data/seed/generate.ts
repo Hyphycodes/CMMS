@@ -42,9 +42,12 @@ import type {
   DiaryDay,
   DiarySuspension,
   PlacementEntry,
+  PayEstimate,
+  PayEstimateLine,
 } from "@/domain/types";
 import { makeRng, type Rng } from "./rng";
 import { buildPayItemMaterials } from "@/domain/grouping";
+import { lineAmount, sumAmounts } from "@/domain/money";
 
 export const MASTER_SEED = "proof-cmms-v1";
 const MS_DAY = 86_400_000;
@@ -70,6 +73,7 @@ export interface World {
   testTemplates: TestTemplate[];
   suspensionsByContract: Map<string, DiarySuspension[]>;
   placements: PlacementEntry[];
+  payEstimates: PayEstimate[];
 }
 
 const FUND_KEYS = ["FED-STP", "STATE-01", "LOCAL-A", "FED-NHPP", "STATE-BR"];
@@ -573,6 +577,9 @@ export function generateWorld(config: SeedConfig = DEFAULT_SEED_CONFIG): World {
   const suspensionsByContract = new Map<string, DiarySuspension[]>();
   for (const c of contracts) suspensionsByContract.set(c.id, generateSuspensions(c.id));
 
+  const placements = generatePlacements(contracts, payItemsByContract);
+  const payEstimates = generatePayEstimates(contracts, payItemsByContract, placements);
+
   return {
     contracts,
     items,
@@ -581,8 +588,68 @@ export function generateWorld(config: SeedConfig = DEFAULT_SEED_CONFIG): World {
     tests,
     testTemplates: TEST_TEMPLATES,
     suspensionsByContract,
-    placements: generatePlacements(contracts, payItemsByContract),
+    placements,
+    payEstimates,
   };
+}
+
+/** Prior pay estimates per active contract; marks included placements (brief 09). */
+function generatePayEstimates(
+  contracts: Contract[],
+  payItemsByContract: Map<string, PayItem[]>,
+  placements: PlacementEntry[],
+): PayEstimate[] {
+  const out: PayEstimate[] = [];
+  const byContract = new Map<string, PlacementEntry[]>();
+  for (const p of placements) {
+    const arr = byContract.get(p.contractId);
+    if (arr) arr.push(p);
+    else byContract.set(p.contractId, [p]);
+  }
+  for (const c of contracts) {
+    if (c.summary.contractStatus !== "Active" && c.summary.contractStatus !== "Completed") continue;
+    const rng = makeRng(`${MASTER_SEED}:payest:${c.id}`);
+    const count = rng.weighted<number>([[0, 2], [1, 3], [2, 3]]);
+    if (count === 0) continue;
+    const payItems = payItemsByContract.get(c.id) ?? [];
+    const eligible = (byContract.get(c.id) ?? []).filter((p) => p.type === "Placed" && p.posted).sort((a, b) => a.date.localeCompare(b.date));
+    let toDate = 0;
+    for (let k = 1; k <= count; k++) {
+      const slice = eligible.slice((k - 1) * Math.ceil(eligible.length / (count + 1)), k * Math.ceil(eligible.length / (count + 1)));
+      if (slice.length === 0) continue;
+      const estId = `pe_${c.id}_${k}`;
+      const byItem = new Map<string, PlacementEntry[]>();
+      for (const p of slice) {
+        p.payEstimateId = estId; // mark consumed
+        const arr = byItem.get(p.payItemNumber);
+        if (arr) arr.push(p);
+        else byItem.set(p.payItemNumber, [p]);
+      }
+      const lines: PayEstimateLine[] = [...byItem.entries()].map(([num, ps]) => {
+        const pi = payItems.find((x) => x.number === num);
+        const qty = ps.reduce((s, p) => s + p.quantity, 0);
+        const price = pi?.unitPrice ?? ps[0].price;
+        return { payItemNumber: num, description: pi?.description ?? "—", unit: pi?.unit ?? "", quantityThis: qty, unitPrice: price, amount: lineAmount(qty, price) };
+      });
+      const thisTotal = sumAmounts(lines.map((l) => l.amount));
+      toDate += thisTotal;
+      const periodEnd = isoDate(Date.now() - (count - k) * 30 * MS_DAY - rng.int(1, 10) * MS_DAY);
+      out.push({
+        id: estId,
+        contractId: c.id,
+        number: k,
+        periodStart: isoDate(new Date(periodEnd).getTime() - 28 * MS_DAY),
+        periodEnd,
+        status: k < count ? "Paid" : rng.weighted<PayEstimate["status"]>([["Submitted", 3], ["Approved", 2], ["Paid", 1]]),
+        submittedBy: rng.pick(STAFF_NAMES),
+        submittedAt: periodEnd,
+        lines,
+        thisEstimateTotal: thisTotal,
+        toDateTotal: Math.round(toDate * 100) / 100,
+      });
+    }
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
