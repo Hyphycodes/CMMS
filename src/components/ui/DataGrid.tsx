@@ -150,10 +150,22 @@ export function DataGrid<T>({
       <div
         key={row.id}
         data-index={index}
+        role={onRowClick ? "button" : undefined}
+        tabIndex={onRowClick ? 0 : undefined}
         onClick={() => onRowClick?.(row.original)}
+        onKeyDown={
+          onRowClick
+            ? (e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  onRowClick(row.original);
+                }
+              }
+            : undefined
+        }
         onContextMenu={onRowContextMenu ? (e) => onRowContextMenu(e, row.original) : undefined}
         className={[
-          "grid items-center border-b border-line/70 px-3 text-sm",
+          "grid items-center border-b border-line/70 px-3 text-sm outline-none focus-visible:bg-accent-soft",
           onRowClick ? "cursor-pointer" : "",
           selected ? "bg-accent-soft" : "hover:bg-canvas",
         ].join(" ")}

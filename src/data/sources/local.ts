@@ -93,6 +93,14 @@ let chaos = 0; // probability a save fails, for demonstrating rollback
 export function setChaos(p: number): void {
   chaos = p;
 }
+// Dev affordance: `?chaos=0.5` forces ~50% of saves to fail so optimistic
+// rollback + the error toast are demonstrable (brief 13).
+try {
+  const c = Number(new URLSearchParams(window.location.search).get("chaos"));
+  if (!Number.isNaN(c) && c > 0) chaos = Math.min(1, c);
+} catch {
+  /* non-browser (seed script) — ignore */
+}
 function maybeFail(): void {
   if (chaos > 0 && Math.random() < chaos) {
     throw new Error("Simulated save failure (chaos mode)");

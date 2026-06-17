@@ -53,3 +53,40 @@ performance-acceptance section.
 Balance = provided − required, where required = pay quantity placed × material conversion
 factor (preset per material family; e.g. HMA 0.672 as in the manual). Group Status is
 derived (Satisfactory when balance ≥ 0, else Deficient), exactly as the manual describes.
+
+---
+
+## Briefs 01–13 (build-brief set) — autonomous choices
+
+### D9 — Scope is at-selector in local mode, scope-at-load via RLS in Supabase
+Brief 02 prefers scope-at-load. Local mode generates the whole deterministic world once
+and filters by the current user's visible contracts in the store selectors (interim,
+acceptable per brief 02). The Supabase path is true scope-at-load: `loadWorld` selects and
+RLS (0003) returns only the authenticated user's rows. Demo users are derived from the
+loaded world (`src/auth/demoUsers.ts`); a Header role-switcher previews each role in local mode.
+
+### D10 — Writes persist as full-object deltas through the `DataSource` seam
+Every new write (samples, ledger, EOI rows, placements, estimates, authorizations, diary,
+pay-item status) goes through a `DataSource` method + an optimistic store mutation modeled on
+`setEoiApproval`. Local persists deltas to localStorage and overlays them on load; structural
+edits store the whole object (simplest correct merge). EOI per-row **approval** stays a
+separate delta (`eoi_reviews`) so it remains documentation-gated independent of structural edits.
+
+### D11 — Diary days + pay-item-material rows are generated on demand, not seeded per day
+Seeding a `DiaryDay` for every day × 200 contracts would bloat the load-once world. Diary days
+are generated deterministically by `buildDiaryDay(contract, date)` and overlaid by saved
+deltas; only suspensions are seeded. Same principle keeps inventory detail (`buildOverlaidDetail`).
+
+### D12 — Identifier formats (confirm with the agency before go-live)
+Sample Identifier `SMP-<seq>`, Test ID numeric `<50000+seq>`, inventory id `<100000+seq>`.
+Pluggable — swap the format in `SampleForm`/`InventoryForm` when the agency confirms theirs.
+
+### D13 — Authorization actor + propagation
+Per brief 02's open question, authorizations are authored/approved by Resident Engineer +
+District Admin (`manage_authorization`). On final approval the **single** `advanceAuthApproval`
+path publishes and propagates item quantity changes to `PayItem.awardedQuantity` and the
+contract's adjusted/current value — one update path, no drift.
+
+### D14 — Contract sub-tab adds (subcontractors, documents) are in-memory until brief 12 storage
+Brief 06 adds rows in memory with a toast noting backend sync; real upload/Storage + the
+`documents` table land in brief 12. Insurance + Final Review are read-mostly (all fields preserved).

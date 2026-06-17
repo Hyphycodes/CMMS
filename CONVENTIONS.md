@@ -34,7 +34,20 @@ set is already in memory. Do not add React Query for data the world already serv
 
 ## 5. Guardrails
 - One store, one router, **no pagination** — virtualize, don't truncate.
-- Grouping/balance/money math lives once (`src/domain/grouping.ts`) and is shared by
-  inventory + quantity book — they must never disagree.
+- Grouping/balance/money math lives once (`src/domain/grouping.ts` + `src/domain/money.ts`)
+  and is shared by inventory + quantity book + pay estimate — they must never disagree.
 - Material unit ≠ pay-item unit — always surface both.
-- Optimistic UI must roll back cleanly (`setChaos(p)` in local mode proves it).
+- Optimistic UI must roll back cleanly. Prove it: open with `?chaos=0.5` (local mode forces
+  ~50% of saves to fail → the UI rolls back + toasts).
+
+## 6. Performance & accessibility invariants (brief 13)
+Every module inherits these from the shared components — don't re-litigate them:
+- **Virtualize** at > ~100 rows via `DataGrid` (TanStack Virtual). 50 rows and 50,000 feel
+  identical. The dev row-count switcher (`?perf=1`) proves it on inventory.
+- **Optimistic** writes through the store + `DataSource`; instant flip, background save,
+  rollback + `aria-live` toast on failure.
+- **Scoped load** (brief 02/12): `loadWorld` returns only the user's world; with Supabase,
+  RLS returns only permitted rows, so the in-memory model stays small.
+- **a11y:** base type ≥ 15px, data ≥ 13px tabular; visible focus rings; rows are keyboard
+  focusable (Enter opens); **Esc** closes the drawer; labeled (never icon-only) primary
+  actions; disabled controls keep a tooltip reason; empty states say "No records to display."

@@ -39,8 +39,15 @@ body {
   background: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  /* a11y (brief 13): base ≥ 15px for older / non-technical staff; honors OS zoom */
+  font-size: 15px;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* tabular numerals everywhere numbers are compared */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Status pills — a plain colored word, not an icon to decode (Ch. 14). */
