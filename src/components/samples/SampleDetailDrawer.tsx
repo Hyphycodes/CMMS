@@ -409,7 +409,7 @@ function DocumentsSection({
   onRemove,
 }: {
   attachments: Attachment[];
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
   onAdd: (files: FileList | null) => void;
   onRemove: (id: string) => void;
 }) {
