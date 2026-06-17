@@ -23,6 +23,7 @@ import type {
   EOIApproval,
 } from "@/domain/types";
 import type { SeedConfig, World } from "../seed/generate";
+import { TEST_TEMPLATES } from "../seed/generate";
 
 function client(): SupabaseClient {
   const url = import.meta.env.VITE_SUPABASE_URL;
@@ -66,7 +67,16 @@ export function createSupabaseDataSource(): DataSource {
         eoiDeltas[`${r.item_id}:${r.eoi_id}`] = { approval: r.approval, note: r.note ?? "" };
       }
 
-      const world: World = { contracts, items, payItemsByContract };
+      // Samples/tests load lands with their tables in brief 12; templates ship
+      // as a constant. Empty here keeps the seam stable for the active source.
+      const world: World = {
+        contracts,
+        items,
+        payItemsByContract,
+        samples: [],
+        tests: [],
+        testTemplates: TEST_TEMPLATES,
+      };
       return { world, eoiDeltas };
     },
 

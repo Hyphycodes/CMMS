@@ -15,10 +15,15 @@ type Row =
 export function InboxPage() {
   const items = useStore((s) => s.items);
   const contractsById = useStore((s) => s.contractsById);
+  const visibleIds = useStore((s) => s.visibleIds);
+  const canBulk = useStore((s) => s.can("bulk_mark_review_complete"));
   const setInventoryStatus = useStore((s) => s.setInventoryStatus);
   const navigate = useNavigate();
 
-  const queue = useMemo(() => buildQueue(items, contractsById), [items, contractsById]);
+  const queue = useMemo(
+    () => buildQueue(items, contractsById, visibleIds),
+    [items, contractsById, visibleIds],
+  );
 
   const [q, setQ] = useState("");
   const [producer, setProducer] = useState("");
@@ -134,6 +139,10 @@ export function InboxPage() {
 
   const approve = (ids: string[]) => {
     if (ids.length === 0) return;
+    if (!canBulk) {
+      useStore.getState().pushToast("error", "Only Documentation / Admin can mark items Review Complete.");
+      return;
+    }
     setInventoryStatus(ids, "Review Complete", bulkNote.trim() ? { note: bulkNote.trim() } : undefined);
     setSelected((prev) => {
       const next = new Set(prev);
@@ -302,7 +311,9 @@ export function InboxPage() {
           />
           <button
             onClick={() => approve([...selected])}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg transition hover:bg-accent-hover"
+            disabled={!canBulk}
+            title={canBulk ? undefined : "Only Documentation / Admin can mark Review Complete."}
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             Mark Review Complete
           </button>
@@ -473,11 +484,16 @@ function Select({
 
 // --- helpers ---------------------------------------------------------------
 
-function buildQueue(items: InventoryItem[], contractsById: Map<string, Contract>): ReviewQueueItem[] {
+function buildQueue(
+  items: InventoryItem[],
+  contractsById: Map<string, Contract>,
+  visibleIds: Set<string>,
+): ReviewQueueItem[] {
   const now = Date.now();
   const out: ReviewQueueItem[] = [];
   for (const it of items) {
     if (it.status !== "Ready for Review") continue;
+    if (!visibleIds.has(it.contractId)) continue;
     const c = contractsById.get(it.contractId);
     out.push({
       ...it,

@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useStore } from "@/store/store";
 import { Spinner } from "@/components/ui/Loading";
-import { ChevronDown } from "@/components/ui/icons";
+import { ChevronDown, UsersIcon } from "@/components/ui/icons";
+import { ROLE_LABELS } from "@/auth/permissions";
 import { ContractSelector } from "./ContractSelector";
 
 export function Header() {
@@ -10,6 +11,9 @@ export function Header() {
   const contract = useStore((s) => (contractId ? s.contract(contractId) : undefined));
   const saving = useStore((s) => s.savingCount > 0);
   const dataSourceName = useStore((s) => s.dataSourceName);
+  const users = useStore((s) => s.users);
+  const currentUser = useStore((s) => s.currentUser);
+  const setCurrentUser = useStore((s) => s.setCurrentUser);
   const [selectorOpen, setSelectorOpen] = useState(false);
 
   return (
@@ -48,6 +52,26 @@ export function Header() {
           <span className="flex items-center gap-1.5 text-xs text-ink-soft">
             <Spinner className="text-sm" /> Saving…
           </span>
+        )}
+        {dataSourceName === "local" && currentUser && (
+          <label
+            className="flex items-center gap-1.5 rounded-lg border border-line bg-canvas px-2 py-1 text-xs text-ink-soft"
+            title="Preview a role (dev only — replaced by Supabase Auth in brief 12)"
+          >
+            <UsersIcon className="text-sm text-ink-faint" />
+            <select
+              value={currentUser.id}
+              onChange={(e) => setCurrentUser(e.target.value)}
+              aria-label="Switch role"
+              className="bg-transparent font-medium text-ink outline-none"
+            >
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name} · {ROLE_LABELS[u.roles[0]]}
+                </option>
+              ))}
+            </select>
+          </label>
         )}
         <span
           className="rounded-full border border-line bg-canvas px-2.5 py-1 text-[11px] font-medium text-ink-soft"

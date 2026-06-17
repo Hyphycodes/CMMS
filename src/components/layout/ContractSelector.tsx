@@ -5,7 +5,12 @@ import { SearchIcon, XIcon } from "@/components/ui/icons";
 
 /** Type-to-filter over all ~200 contracts. No pagination. */
 export function ContractSelector({ onClose }: { onClose: () => void }) {
-  const contracts = useStore((s) => s.contracts);
+  const allContracts = useStore((s) => s.contracts);
+  const visibleIds = useStore((s) => s.visibleIds);
+  const contracts = useMemo(
+    () => allContracts.filter((c) => visibleIds.has(c.id)),
+    [allContracts, visibleIds],
+  );
   const [q, setQ] = useState("");
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);

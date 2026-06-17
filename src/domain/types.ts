@@ -5,6 +5,33 @@
  */
 
 // ---------------------------------------------------------------------------
+// Users / roles / scope (brief 02) — the multi-user model
+// ---------------------------------------------------------------------------
+
+export type Role =
+  | "Inspector"
+  | "ResidentEngineer"
+  | "Contractor"
+  | "Documentation"
+  | "DistrictAdmin";
+
+export const ROLES: Role[] = [
+  "Inspector",
+  "ResidentEngineer",
+  "Contractor",
+  "Documentation",
+  "DistrictAdmin",
+];
+
+export interface User {
+  id: string;
+  name: string;
+  roles: Role[];
+  districtIds: number[]; // access to all contracts in these districts
+  contractIds: string[]; // explicit per-contract access
+}
+
+// ---------------------------------------------------------------------------
 // Status sets (Ch. 14 — never invent these)
 // ---------------------------------------------------------------------------
 
@@ -245,4 +272,90 @@ export interface ReviewQueueItem extends InventoryItem {
   waitingMs: number;
   /** stable key for duplicate detection: contract + material + producer + supplier. */
   dedupeKey: string;
+}
+
+// ---------------------------------------------------------------------------
+// Samples + Tests (Ch. 9–12) — the tested-material path (briefs 03–04)
+// ---------------------------------------------------------------------------
+
+export type SampleStatus =
+  | "Logged In"
+  | "In Testing"
+  | "Tested"
+  | "Validated"
+  | "Approved"
+  | "Rejected";
+export const SAMPLE_STATUSES: SampleStatus[] = [
+  "Logged In",
+  "In Testing",
+  "Tested",
+  "Validated",
+  "Approved",
+  "Rejected",
+];
+
+export interface Sample {
+  id: string;
+  sampleIdentifier: string; // generated on save
+  testId: string; // generated on save
+  inspectionType: string; // ACC / PRO / IND / …
+  inspector: string; // STAFF_NAMES
+  sampleDate: string; // ISO
+  totalSamples: number;
+  materialCode: string;
+  materialName: string;
+  desc1: string;
+  desc2: string;
+  desc3: string;
+  specialId: string;
+  inspectedQty: number;
+  materialUnit: string;
+  producerNumber: string;
+  producerName: string;
+  supplierNumber: string;
+  supplierName: string;
+  sampledFrom: string; // jobsite / Manufacturer's Plant / …
+  latitude: string;
+  longitude: string;
+  specYear: string;
+  dsaBaba: boolean;
+  responsibleLab: string;
+  contractId: string | null;
+  payItemNumber: string | null;
+  inventoryItemId: string | null;
+  receivedDate: string | null;
+  startedDate: string | null;
+  completedDate: string | null;
+  status: SampleStatus;
+  approverName: string;
+  approvedDate: string | null;
+  note: string;
+  hasDocument: boolean;
+}
+
+export interface TestField {
+  key: string;
+  label: string;
+  value: string;
+  spec?: string;
+  pass?: boolean;
+}
+
+export interface Test {
+  id: string;
+  sampleId: string;
+  series: number; // 1..n
+  testType: string;
+  testedBy: string;
+  testDate: string | null;
+  fields: TestField[]; // template-driven per material
+  validated: boolean;
+  validatedBy: string;
+  validatedAt: string | null;
+}
+
+export interface TestTemplate {
+  materialFamily: MaterialFamily;
+  testType: string;
+  fields: { key: string; label: string }[];
 }

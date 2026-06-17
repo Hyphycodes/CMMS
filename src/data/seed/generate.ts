@@ -32,6 +32,11 @@ import type {
   GroupStatus,
   Material,
   Vendor,
+  Sample,
+  SampleStatus,
+  Test,
+  TestField,
+  TestTemplate,
 } from "@/domain/types";
 import { makeRng, type Rng } from "./rng";
 
@@ -54,7 +59,81 @@ export interface World {
   contracts: Contract[];
   items: InventoryItem[];
   payItemsByContract: Map<string, PayItem[]>;
+  samples: Sample[];
+  tests: Test[];
+  testTemplates: TestTemplate[];
 }
+
+// Test field templates keyed by material family (Ch. 11) — drives the Tests tab.
+export const TEST_TEMPLATES: TestTemplate[] = [
+  {
+    materialFamily: "HMA",
+    testType: "Marshall / Gradation",
+    fields: [
+      { key: "ac", label: "Asphalt Content %" },
+      { key: "va", label: "Voids (Va) %" },
+      { key: "vma", label: "VMA %" },
+      { key: "gmm", label: "Gmm" },
+      { key: "passing200", label: "% Passing #200" },
+    ],
+  },
+  {
+    materialFamily: "Concrete",
+    testType: "Compressive Strength",
+    fields: [
+      { key: "slump", label: "Slump (in)" },
+      { key: "air", label: "Air %" },
+      { key: "strength7", label: "7-day (psi)" },
+      { key: "strength28", label: "28-day (psi)" },
+    ],
+  },
+  {
+    materialFamily: "Steel",
+    testType: "Tensile / Bend",
+    fields: [
+      { key: "yield", label: "Yield (ksi)" },
+      { key: "tensile", label: "Tensile (ksi)" },
+      { key: "elong", label: "Elongation %" },
+      { key: "bend", label: "Bend Test" },
+    ],
+  },
+  {
+    materialFamily: "Aggregate",
+    testType: "Gradation",
+    fields: [
+      { key: "passing4", label: "% Passing #4" },
+      { key: "passing200", label: "% Passing #200" },
+      { key: "ld", label: "L.A. Abrasion %" },
+    ],
+  },
+  {
+    materialFamily: "Soil",
+    testType: "Proctor / Density",
+    fields: [
+      { key: "maxdry", label: "Max Dry Density (pcf)" },
+      { key: "optmoist", label: "Optimum Moisture %" },
+      { key: "fielddensity", label: "Field Density %" },
+    ],
+  },
+  {
+    materialFamily: "Paint",
+    testType: "Film / Retroreflectivity",
+    fields: [
+      { key: "thickness", label: "Wet Film (mil)" },
+      { key: "retro", label: "Retroreflectivity (mcd)" },
+      { key: "dry", label: "Dry Time (min)" },
+    ],
+  },
+];
+
+const INSPECTION_TYPES = ["ACC", "PRO", "IND", "QA"] as const;
+const SAMPLED_FROM = ["Jobsite", "Manufacturer's Plant", "Stockpile", "Truck", "Plant"] as const;
+const RESPONSIBLE_LABS = [
+  "District Lab",
+  "Central BMPR Lab",
+  "Independent Assurance",
+  "Producer QC Lab",
+] as const;
 
 // Pay item templates — real IDOT-style codes from the manual + plausible ones.
 const PAY_ITEM_TEMPLATES = [
@@ -297,7 +376,143 @@ export function generateWorld(config: SeedConfig = DEFAULT_SEED_CONFIG): World {
     c.readyForReviewCount = arr.filter((i) => i.status === "Ready for Review").length;
   }
 
-  return { contracts, items, payItemsByContract };
+  const { samples, tests } = generateSamplesAndTests(contracts, byContract, payItemsByContract);
+
+  return { contracts, items, payItemsByContract, samples, tests, testTemplates: TEST_TEMPLATES };
+}
+
+// ---------------------------------------------------------------------------
+// Samples + tests (briefs 03–04) — deterministic, coherent with producers
+// ---------------------------------------------------------------------------
+
+function generateSamplesAndTests(
+  contracts: Contract[],
+  byContract: Map<string, InventoryItem[]>,
+  payItemsByContract: Map<string, PayItem[]>,
+): { samples: Sample[]; tests: Test[] } {
+  const samples: Sample[] = [];
+  const tests: Test[] = [];
+  let seq = 1;
+
+  for (const contract of contracts) {
+    const rng = makeRng(`${MASTER_SEED}:samples:${contract.id}`);
+    const n = rng.weighted<number>([
+      [0, 3],
+      [1, 3],
+      [2, 4],
+      [3, 3],
+      [4, 2],
+      [6, 1],
+    ]);
+    const items = byContract.get(contract.id) ?? [];
+    const payItems = payItemsByContract.get(contract.id) ?? [];
+
+    for (let k = 0; k < n; k++) {
+      const material = rng.pick(MATERIALS);
+      const producer = producerFor(material, rng);
+      const supplier = rng.pick(SUPPLIERS);
+      const sampleEpoch = Date.now() - rng.int(5, 220) * MS_DAY;
+      const status = rng.weighted<SampleStatus>([
+        ["Logged In", 3],
+        ["In Testing", 2],
+        ["Tested", 2],
+        ["Validated", 2],
+        ["Approved", 4],
+        ["Rejected", 1],
+      ]);
+      const linkedItem =
+        items.length && rng.bool(0.4)
+          ? items.find((i) => i.materialCode === material.code) ?? null
+          : null;
+      const payItem = payItems.length && rng.bool(0.5) ? rng.pick(payItems) : null;
+
+      const received = status !== "Logged In" ? sampleEpoch + rng.int(1, 5) * MS_DAY : null;
+      const started =
+        status === "In Testing" || status === "Tested" || status === "Validated" || status === "Approved" || status === "Rejected"
+          ? (received ?? sampleEpoch) + rng.int(1, 4) * MS_DAY
+          : null;
+      const completed =
+        status === "Tested" || status === "Validated" || status === "Approved" || status === "Rejected"
+          ? (started ?? sampleEpoch) + rng.int(1, 10) * MS_DAY
+          : null;
+      const approved = status === "Approved" || status === "Rejected";
+
+      const sample: Sample = {
+        id: `smp_${seq}`,
+        sampleIdentifier: `SMP-${100000 + seq}`,
+        testId: String(50000 + seq),
+        inspectionType: rng.pick(INSPECTION_TYPES),
+        inspector: rng.pick(STAFF_NAMES),
+        sampleDate: isoDate(sampleEpoch),
+        totalSamples: rng.int(1, 5),
+        materialCode: material.code,
+        materialName: material.name,
+        desc1: material.family === "Steel" ? rng.pick(["#4", "#5", "#6", "#8"]) : "",
+        desc2: "",
+        desc3: "",
+        specialId: rng.bool(0.2) ? `SID-${rng.int(100, 999)}` : "",
+        inspectedQty: rng.float(20, 800, 1),
+        materialUnit: material.unit,
+        producerNumber: producer.number,
+        producerName: producer.name,
+        supplierNumber: supplier.number,
+        supplierName: supplier.name,
+        sampledFrom: rng.pick(SAMPLED_FROM),
+        latitude: (40 + rng.float(0, 2, 5)).toFixed(5),
+        longitude: (-89 - rng.float(0, 2, 5)).toFixed(5),
+        specYear: rng.pick(["2016", "2022"]),
+        dsaBaba: rng.bool(0.3),
+        responsibleLab: rng.pick(RESPONSIBLE_LABS),
+        contractId: contract.id,
+        payItemNumber: payItem?.number ?? null,
+        inventoryItemId: linkedItem?.id ?? null,
+        receivedDate: received ? isoDate(received) : null,
+        startedDate: started ? isoDate(started) : null,
+        completedDate: completed ? isoDate(completed) : null,
+        status,
+        approverName: approved ? rng.pick(STAFF_NAMES) : "",
+        approvedDate: approved && completed ? isoDate(completed + rng.int(1, 6) * MS_DAY) : null,
+        note: rng.bool(0.2) ? "Sample logged per QC plan." : "",
+        hasDocument: rng.bool(0.5),
+      };
+      samples.push(sample);
+
+      // Tests for anything past Logged In.
+      if (status !== "Logged In") {
+        const template =
+          TEST_TEMPLATES.find((t) => t.materialFamily === material.family) ?? TEST_TEMPLATES[0];
+        const seriesCount = rng.bool(0.3) ? 2 : 1;
+        const validated = status === "Validated" || status === "Approved";
+        for (let s = 1; s <= seriesCount; s++) {
+          const fields: TestField[] = template.fields.map((f) => {
+            const val = rng.float(1, 100, 1);
+            return {
+              key: f.key,
+              label: f.label,
+              value: String(val),
+              spec: rng.bool(0.6) ? `≥ ${rng.float(1, 50, 1)}` : "",
+              pass: rng.bool(0.85),
+            };
+          });
+          tests.push({
+            id: `tst_${seq}_${s}`,
+            sampleId: sample.id,
+            series: s,
+            testType: template.testType,
+            testedBy: rng.pick(STAFF_NAMES),
+            testDate: completed ? isoDate(completed) : started ? isoDate(started) : null,
+            fields,
+            validated,
+            validatedBy: validated ? rng.pick(STAFF_NAMES) : "",
+            validatedAt: validated && completed ? isoDate(completed + MS_DAY) : null,
+          });
+        }
+      }
+      seq++;
+    }
+  }
+
+  return { samples, tests };
 }
 
 const NOTES = [

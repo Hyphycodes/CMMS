@@ -12,10 +12,18 @@ import type {
   InventoryStatus,
   EOIApproval,
   ReviewQueueItem,
+  User,
+  Sample,
+  Test,
+  TestTemplate,
 } from "@/domain/types";
 import { getDataSource } from "@/data/dataSource";
 import { DEFAULT_SEED_CONFIG, buildDetail } from "@/data/seed/generate";
 import type { EoiDelta } from "@/data/dataSource";
+import { buildDemoUsers, DEFAULT_USER_ID } from "@/auth/demoUsers";
+import { can as canDo, visibleContractIds, type Capability } from "@/auth/permissions";
+
+const USER_KEY = "proof:user:v1";
 
 export interface Toast {
   id: number;
@@ -34,6 +42,19 @@ interface State {
   payItemsByContract: Map<string, PayItem[]>;
   eoiDeltas: Record<string, EoiDelta>;
 
+  // samples + tests (briefs 03–04)
+  samplesList: Sample[];
+  testsList: Test[];
+  testTemplates: TestTemplate[];
+
+  // users / roles / scope (brief 02)
+  users: User[];
+  currentUser: User | undefined;
+  visibleIds: Set<string>;
+  setCurrentUser(id: string): void;
+  can(cap: Capability): boolean;
+  canAccessContract(contractId: string): boolean;
+
   savingCount: number;
   toasts: Toast[];
 
@@ -41,10 +62,14 @@ interface State {
 
   // selectors (call inside useMemo for derived structures)
   contract(id: string): Contract | undefined;
+  visibleContracts(): Contract[];
   inventoryForContract(contractId: string): InventoryItem[];
   payItemsFor(contractId: string): PayItem[];
   reviewQueue(): ReviewQueueItem[];
   detail(itemId: string): InventoryDetail | undefined;
+  samples(): Sample[];
+  sample(id: string): Sample | undefined;
+  testsForSample(sampleId: string): Test[];
 
   // mutations (optimistic)
   setInventoryStatus(ids: string[], status: InventoryStatus, opts?: { note?: string }): void;
@@ -68,6 +93,14 @@ export const useStore = create<State>((set, get) => ({
   payItemsByContract: new Map(),
   eoiDeltas: {},
 
+  samplesList: [],
+  testsList: [],
+  testTemplates: [],
+
+  users: [],
+  currentUser: undefined,
+  visibleIds: new Set(),
+
   savingCount: 0,
   toasts: [],
 
@@ -77,6 +110,15 @@ export const useStore = create<State>((set, get) => ({
     try {
       const ds = await getDataSource();
       const { world, eoiDeltas } = await ds.loadWorld(DEFAULT_SEED_CONFIG);
+      const users = buildDemoUsers(world.contracts, world.items);
+      const savedId = (() => {
+        try {
+          return localStorage.getItem(USER_KEY);
+        } catch {
+          return null;
+        }
+      })();
+      const currentUser = users.find((u) => u.id === savedId) ?? users.find((u) => u.id === DEFAULT_USER_ID) ?? users[0];
       set({
         status: "ready",
         dataSourceName: ds.name,
@@ -85,22 +127,48 @@ export const useStore = create<State>((set, get) => ({
         items: world.items,
         payItemsByContract: world.payItemsByContract,
         eoiDeltas,
+        samplesList: world.samples,
+        testsList: world.tests,
+        testTemplates: world.testTemplates,
+        users,
+        currentUser,
+        visibleIds: visibleContractIds(currentUser, world.contracts),
       });
     } catch (e) {
       set({ status: "error", error: e instanceof Error ? e.message : String(e) });
     }
   },
 
+  setCurrentUser(id) {
+    const user = get().users.find((u) => u.id === id);
+    if (!user) return;
+    try {
+      localStorage.setItem(USER_KEY, id);
+    } catch {
+      /* non-fatal */
+    }
+    set({ currentUser: user, visibleIds: visibleContractIds(user, get().contracts) });
+  },
+
+  can: (cap) => canDo(get().currentUser, cap),
+  canAccessContract: (contractId) => get().visibleIds.has(contractId),
+
   contract: (id) => get().contractsById.get(id),
+  visibleContracts: () => {
+    const vis = get().visibleIds;
+    return get().contracts.filter((c) => vis.has(c.id));
+  },
   inventoryForContract: (contractId) => get().items.filter((i) => i.contractId === contractId),
   payItemsFor: (contractId) => get().payItemsByContract.get(contractId) ?? [],
 
   reviewQueue: () => {
     const now = Date.now();
     const contractsById = get().contractsById;
+    const vis = get().visibleIds;
     const queue: ReviewQueueItem[] = [];
     for (const it of get().items) {
       if (it.status !== "Ready for Review") continue;
+      if (!vis.has(it.contractId)) continue;
       const c = contractsById.get(it.contractId);
       queue.push({
         ...it,
@@ -126,6 +194,16 @@ export const useStore = create<State>((set, get) => ({
     });
     return detail;
   },
+
+  samples: () => {
+    const vis = get().visibleIds;
+    return get().samplesList.filter((s) => s.contractId === null || vis.has(s.contractId));
+  },
+  sample: (id) => get().samplesList.find((s) => s.id === id),
+  testsForSample: (sampleId) =>
+    get()
+      .testsList.filter((t) => t.sampleId === sampleId)
+      .sort((a, b) => a.series - b.series),
 
   setInventoryStatus(ids, status, opts) {
     if (ids.length === 0) return;

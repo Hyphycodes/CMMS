@@ -106,6 +106,7 @@ const STATUS_TONE: Record<string, PillTone> = {
 export function ContractSummaryPage() {
   const { contractId } = useParams();
   const contract = useStore((s) => (contractId ? s.contract(contractId) : undefined));
+  const canAccess = useStore((s) => (contractId ? s.canAccessContract(contractId) : false));
   const [showEmpty, setShowEmpty] = useState(false);
 
   const pctComplete = useMemo(() => {
@@ -116,6 +117,13 @@ export function ContractSummaryPage() {
 
   if (!contract) {
     return <div className="grid h-full place-items-center text-ink-soft">Select a contract to begin.</div>;
+  }
+  if (!canAccess) {
+    return (
+      <div className="grid h-full place-items-center px-6 text-center text-sm text-ink-soft">
+        You don't have access to contract {contract.number}. It isn't in your assigned scope.
+      </div>
+    );
   }
   const s = contract.summary;
 

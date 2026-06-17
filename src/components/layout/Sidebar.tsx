@@ -36,9 +36,10 @@ export function Sidebar() {
   const { contractId } = useParams();
   const contract = useStore((s) => (contractId ? s.contract(contractId) : undefined));
   const contracts = useStore((s) => s.contracts);
+  const visibleIds = useStore((s) => s.visibleIds);
   const totalReady = useMemo(
-    () => contracts.reduce((n, c) => n + c.readyForReviewCount, 0),
-    [contracts],
+    () => contracts.reduce((n, c) => (visibleIds.has(c.id) ? n + c.readyForReviewCount : n), 0),
+    [contracts, visibleIds],
   );
 
   return (
@@ -152,7 +153,7 @@ export function Sidebar() {
       </nav>
 
       <div className="mt-auto px-3 pt-4 text-[11px] text-ink-faint">
-        {contracts.length} contracts loaded
+        {visibleIds.size.toLocaleString()} of {contracts.length.toLocaleString()} contracts in scope
       </div>
     </aside>
   );

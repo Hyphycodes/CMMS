@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { useStore } from "@/store/store";
+import { buildDetail } from "@/data/seed/generate";
 import {
   INVENTORY_STATUSES,
   EOI_APPROVALS,
@@ -14,12 +15,26 @@ import { formatDate, formatQty, formatNumber } from "@/lib/format";
 const TABS = ["Details", "Quantity Ledger", "Evidence of Inspection", "Pay Item Materials"] as const;
 type Tab = (typeof TABS)[number];
 
+const EMPTY_PAY_ITEMS: never[] = []; // stable reference for the no-item case
+
 export function ItemDetailDrawer({ itemId, onClose }: { itemId: string; onClose: () => void }) {
   const item = useStore((s) => s.items.find((i) => i.id === itemId));
-  // store.detail() overlays persisted ledger / EOI / status deltas (brief 05).
-  const detail = useStore((s) => s.detail(itemId));
+  const payItems = useStore((s) => (item ? s.payItemsFor(item.contractId) : EMPTY_PAY_ITEMS));
+  const eoiDeltas = useStore((s) => s.eoiDeltas);
   const setInventoryStatus = useStore((s) => s.setInventoryStatus);
   const [tab, setTab] = useState<Tab>("Details");
+
+  // Build detail in a memo (NOT a store selector — buildDetail returns a new
+  // object each call, which would loop useSyncExternalStore). Overlay EOI deltas.
+  const detail = useMemo<InventoryDetail | undefined>(() => {
+    if (!item) return undefined;
+    const d = buildDetail(item, payItems);
+    d.eoi = d.eoi.map((row) => {
+      const delta = eoiDeltas[`${itemId}:${row.id}`];
+      return delta ? { ...row, approval: delta.approval, note: delta.note } : row;
+    });
+    return d;
+  }, [item, payItems, eoiDeltas, itemId]);
 
   if (!item || !detail) return null;
 
