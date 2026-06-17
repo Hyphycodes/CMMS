@@ -31,8 +31,7 @@ import type {
   LedgerType,
   EOIEntry,
   EOIApproval,
-  PayItemMaterialRow,
-  GroupStatus,
+  PayItemMaterialStatus,
   Material,
   Vendor,
   Sample,
@@ -42,6 +41,7 @@ import type {
   TestTemplate,
 } from "@/domain/types";
 import { makeRng, type Rng } from "./rng";
+import { buildPayItemMaterials } from "@/domain/grouping";
 
 export const MASTER_SEED = "proof-cmms-v1";
 const MS_DAY = 86_400_000;
@@ -588,7 +588,6 @@ function injectDuplicateClusters(
 export function buildDetail(item: InventoryItem, payItems: PayItem[]): InventoryDetail {
   const rng = makeRng(`detail:${item.id}`);
   const material = MATERIALS.find((m) => m.code === item.materialCode);
-  const conversionFactor = material?.conversionFactor ?? 1;
 
   // Quantity Ledger — 1..5 rows of received material.
   const ledgerCount = rng.int(1, 5);
@@ -627,39 +626,42 @@ export function buildDetail(item: InventoryItem, payItems: PayItem[]): Inventory
     hasDocument: rng.bool(0.5),
   }));
 
-  // Pay Item Materials — provided vs. required per linked pay item.
-  const provided = ledger
-    .filter((l) => l.type === "Received")
-    .reduce((s, l) => s + l.transactionQty, 0);
-  const payItemMaterials: PayItemMaterialRow[] = item.payItemNumbers.map((num, i) => {
-    const pi = payItems.find((p) => p.number === num);
-    const placed = pi?.placedQuantity ?? rng.float(200, 4000, 0);
-    const required = Math.round(placed * conversionFactor * 100) / 100;
-    const share = item.payItemNumbers.length > 1 ? provided / item.payItemNumbers.length : provided;
-    const balance = Math.round((share - required) * 100) / 100;
-    const groupStatus: GroupStatus = balance >= 0 ? "Satisfactory" : "Deficient";
-    return {
-      payItemNumber: num,
-      payItemDescription: pi?.description ?? "—",
-      payItemUnit: pi?.unit ?? "",
-      placedQuantity: placed,
-      group: String.fromCharCode(65 + i),
-      materialQuantityProvided: Math.round(share * 100) / 100,
-      materialUnit: item.materialUnit,
-      conversionFactor,
-      materialQuantityRequired: required,
-      balance,
-      groupStatus,
-      payItemMaterialStatus:
-        item.status === "Review Complete"
-          ? groupStatus === "Satisfactory"
-            ? "Approved"
-            : "Deficient"
-          : groupStatus === "Satisfactory"
-            ? "Approved"
-            : "Deficient",
-    };
-  });
+  // Pay Item Materials — provided vs. required per linked pay item (grouping.ts).
+  const payItemMaterials = buildPayItemMaterials(item, payItems, ledger);
 
   return { ...item, ledger, eoi, payItemMaterials };
+}
+
+// ---------------------------------------------------------------------------
+// Overlay persisted write-deltas onto the generated detail (brief 05). Shared by
+// the store selector and the inventory drawer so they never disagree.
+// ---------------------------------------------------------------------------
+
+export interface DetailDeltas {
+  eoiApproval: Record<string, { approval: EOIApproval; note: string }>;
+  ledger: Record<string, LedgerEntry[]>;
+  eoiRows: Record<string, EOIEntry[]>;
+  payItemStatus: Record<string, { status: PayItemMaterialStatus; note: string }>;
+}
+
+export function buildOverlaidDetail(
+  item: InventoryItem,
+  payItems: PayItem[],
+  d: DetailDeltas,
+): InventoryDetail {
+  const base = buildDetail(item, payItems);
+  const ledger = d.ledger[item.id] ?? base.ledger;
+
+  let eoi = d.eoiRows[item.id] ?? base.eoi;
+  eoi = eoi.map((row) => {
+    const a = d.eoiApproval[`${item.id}:${row.id}`];
+    return a ? { ...row, approval: a.approval, note: a.note } : row;
+  });
+
+  const payItemMaterials = buildPayItemMaterials(item, payItems, ledger).map((r) => {
+    const o = d.payItemStatus[`${item.id}:${r.payItemNumber}`];
+    return o ? { ...r, payItemMaterialStatus: o.status } : r;
+  });
+
+  return { ...base, ledger, eoi, payItemMaterials };
 }

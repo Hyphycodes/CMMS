@@ -77,6 +77,10 @@ export interface Material {
   family: MaterialFamily;
   /** preset material conversion factor (material qty required per pay unit) */
   conversionFactor: number;
+  /** method of acceptance (Ch. 9 / 13) */
+  moa: string;
+  /** acceptable Evidence of Inspection codes for this material */
+  acceptableEoi: string[];
 }
 
 export type MaterialFamily =
@@ -127,6 +131,10 @@ export interface InventoryItem {
   payItemNumbers: string[]; // linked pay items (Details tab)
   /** epoch ms the item entered "Ready for Review" — drives "oldest waiting first". */
   readyAt: number | null;
+  // Optional Details fields captured on create (brief 05).
+  locationType?: string;
+  effectiveDate?: string | null;
+  expirationDate?: string | null;
 }
 
 /** Full inventory detail — the four tabs. Generated on demand from the item seed. */

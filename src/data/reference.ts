@@ -3,12 +3,26 @@
  * synthetic-but-plausible entries to reach scale. Generic, non-sensitive only.
  * No real people.
  */
-import type { Material, Vendor } from "@/domain/types";
+import type { Material, MaterialFamily, Vendor } from "@/domain/types";
+
+// MOA + Acceptable EOI by material family (Ch. 9 / 13). Materials derive these so
+// inventory (brief 05) and tests (brief 04) read them off the material, not a side map.
+const MOA_BY_FAMILY: Record<MaterialFamily, { moa: string; acceptableEoi: string[] }> = {
+  HMA: { moa: "TEST", acceptableEoi: ["TICK", "TEST", "DPR"] },
+  Paint: { moa: "QUAL", acceptableEoi: ["CERT", "LIST", "MARK"] },
+  Concrete: { moa: "TEST", acceptableEoi: ["TEST", "DPR", "CERT"] },
+  Aggregate: { moa: "TEST", acceptableEoi: ["TEST", "LA-15"] },
+  Steel: { moa: "CERT", acceptableEoi: ["CERT", "TEST", "MARK"] },
+  Soil: { moa: "VISUAL", acceptableEoi: ["TICK", "DPR"] },
+  Hardware: { moa: "CERT", acceptableEoi: ["CERT", "LIST", "MARK"] },
+  Other: { moa: "VISUAL", acceptableEoi: ["TICK", "CERT"] },
+};
 
 // --- Materials -------------------------------------------------------------
 // The first block is verbatim from the manual (Ch. 8 / Ch. 9). The rest are
-// plausible IDOT-style materials added for variety.
-export const MATERIALS: Material[] = [
+// plausible IDOT-style materials added for variety. MOA + Acceptable EOI derive
+// from the material family below.
+const MATERIALS_RAW: Omit<Material, "moa" | "acceptableEoi">[] = [
   // verbatim from manual
   { code: "19522R", name: "HMA BC N70 19.0", unit: "Tons", family: "HMA", conversionFactor: 0.672 },
   { code: "40458", name: "PAINT PVTMK MD EP WH", unit: "Gallons", family: "Paint", conversionFactor: 0.016 },
@@ -41,6 +55,11 @@ export const MATERIALS: Material[] = [
   { code: "60218", name: "Pipe Underdrain 6", unit: "Foot", family: "Other", conversionFactor: 1 },
   { code: "50200", name: "Concrete Box Culvert", unit: "CU YD", family: "Concrete", conversionFactor: 1 },
 ];
+
+export const MATERIALS: Material[] = MATERIALS_RAW.map((m) => ({
+  ...m,
+  ...MOA_BY_FAMILY[m.family],
+}));
 
 // --- Vendors (producers + suppliers) --------------------------------------
 // Verbatim-from-manual producers first.

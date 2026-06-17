@@ -17,10 +17,13 @@ import type {
   SampleStatus,
   Test,
   TestTemplate,
+  LedgerEntry,
+  EOIEntry,
+  PayItemMaterialStatus,
 } from "@/domain/types";
 import { getDataSource } from "@/data/dataSource";
-import { DEFAULT_SEED_CONFIG, buildDetail } from "@/data/seed/generate";
-import type { EoiDelta } from "@/data/dataSource";
+import { DEFAULT_SEED_CONFIG, buildOverlaidDetail } from "@/data/seed/generate";
+import type { EoiDelta, PayItemMaterialStatusDelta } from "@/data/dataSource";
 import { buildDemoUsers, DEFAULT_USER_ID } from "@/auth/demoUsers";
 import { can as canDo, visibleContractIds, type Capability } from "@/auth/permissions";
 
@@ -42,6 +45,9 @@ interface State {
   items: InventoryItem[];
   payItemsByContract: Map<string, PayItem[]>;
   eoiDeltas: Record<string, EoiDelta>;
+  ledgerDeltas: Record<string, LedgerEntry[]>;
+  eoiRowDeltas: Record<string, EOIEntry[]>;
+  payItemStatusDeltas: Record<string, PayItemMaterialStatusDelta>;
 
   // samples + tests (briefs 03–04)
   samplesList: Sample[];
@@ -77,6 +83,12 @@ interface State {
   setInventoryNote(id: string, note: string): void;
   setEoiApproval(itemId: string, eoiId: string, approval: EOIApproval, note?: string): void;
 
+  // inventory writes (brief 05)
+  upsertInventoryItem(item: InventoryItem): void;
+  setLedger(itemId: string, rows: LedgerEntry[]): void;
+  setEoi(itemId: string, rows: EOIEntry[]): void;
+  setPayItemMaterialStatus(itemId: string, payItemNumber: string, status: PayItemMaterialStatus, note?: string): void;
+
   // samples + tests (briefs 03–04)
   upsertSample(sample: Sample): void;
   setSampleStatus(id: string, status: SampleStatus): void;
@@ -100,6 +112,9 @@ export const useStore = create<State>((set, get) => ({
   items: [],
   payItemsByContract: new Map(),
   eoiDeltas: {},
+  ledgerDeltas: {},
+  eoiRowDeltas: {},
+  payItemStatusDeltas: {},
 
   samplesList: [],
   testsList: [],
@@ -117,7 +132,8 @@ export const useStore = create<State>((set, get) => ({
     set({ status: "loading" });
     try {
       const ds = await getDataSource();
-      const { world, eoiDeltas } = await ds.loadWorld(DEFAULT_SEED_CONFIG);
+      const { world, eoiDeltas, ledgerDeltas, eoiRowDeltas, payItemStatusDeltas } =
+        await ds.loadWorld(DEFAULT_SEED_CONFIG);
       const users = buildDemoUsers(world.contracts, world.items);
       const savedId = (() => {
         try {
@@ -135,6 +151,9 @@ export const useStore = create<State>((set, get) => ({
         items: world.items,
         payItemsByContract: world.payItemsByContract,
         eoiDeltas,
+        ledgerDeltas,
+        eoiRowDeltas,
+        payItemStatusDeltas,
         samplesList: world.samples,
         testsList: world.tests,
         testTemplates: world.testTemplates,
@@ -193,14 +212,12 @@ export const useStore = create<State>((set, get) => ({
     const item = get().items.find((i) => i.id === itemId);
     if (!item) return undefined;
     const payItems = get().payItemsFor(item.contractId);
-    const detail = buildDetail(item, payItems);
-    // overlay persisted EOI approval deltas
-    const deltas = get().eoiDeltas;
-    detail.eoi = detail.eoi.map((row) => {
-      const d = deltas[`${itemId}:${row.id}`];
-      return d ? { ...row, approval: d.approval, note: d.note } : row;
+    return buildOverlaidDetail(item, payItems, {
+      eoiApproval: get().eoiDeltas,
+      ledger: get().ledgerDeltas,
+      eoiRows: get().eoiRowDeltas,
+      payItemStatus: get().payItemStatusDeltas,
     });
-    return detail;
   },
 
   samples: () => {
@@ -264,6 +281,93 @@ export const useStore = create<State>((set, get) => ({
       else delete next[key];
       set({ eoiDeltas: next });
     }, "Couldn't save EOI approval");
+  },
+
+  upsertInventoryItem(item) {
+    if (!canDo(get().currentUser, "create_inventory")) {
+      get().pushToast("error", "Your role can't create or edit inventory.");
+      return;
+    }
+    const list = get().items;
+    const idx = list.findIndex((i) => i.id === item.id);
+    const prev = idx >= 0 ? list[idx] : null;
+    set({ items: idx >= 0 ? list.map((i) => (i.id === item.id ? item : i)) : [...list, item] });
+    recomputeContractCounts(get, set, item.contractId);
+    void persist(
+      get,
+      set,
+      async (ds) => ds.persistInventoryItem(item),
+      () => {
+        const cur = get().items;
+        set({ items: prev ? cur.map((i) => (i.id === item.id ? prev : i)) : cur.filter((i) => i.id !== item.id) });
+        recomputeContractCounts(get, set, item.contractId);
+      },
+      "Couldn't save inventory",
+    );
+  },
+
+  setLedger(itemId, rows) {
+    if (!canDo(get().currentUser, "create_inventory")) {
+      get().pushToast("error", "Your role can't edit the Quantity Ledger.");
+      return;
+    }
+    const prev = get().ledgerDeltas[itemId];
+    set({ ledgerDeltas: { ...get().ledgerDeltas, [itemId]: rows } });
+    void persist(
+      get,
+      set,
+      async (ds) => ds.persistLedger(itemId, rows),
+      () => {
+        const next = { ...get().ledgerDeltas };
+        if (prev) next[itemId] = prev;
+        else delete next[itemId];
+        set({ ledgerDeltas: next });
+      },
+      "Couldn't save ledger",
+    );
+  },
+
+  setEoi(itemId, rows) {
+    if (!canDo(get().currentUser, "upload_eoi")) {
+      get().pushToast("error", "Your role can't edit Evidence of Inspection rows.");
+      return;
+    }
+    const prev = get().eoiRowDeltas[itemId];
+    set({ eoiRowDeltas: { ...get().eoiRowDeltas, [itemId]: rows } });
+    void persist(
+      get,
+      set,
+      async (ds) => ds.persistEoi(itemId, rows),
+      () => {
+        const next = { ...get().eoiRowDeltas };
+        if (prev) next[itemId] = prev;
+        else delete next[itemId];
+        set({ eoiRowDeltas: next });
+      },
+      "Couldn't save EOI rows",
+    );
+  },
+
+  setPayItemMaterialStatus(itemId, payItemNumber, status, note = "") {
+    if (!canDo(get().currentUser, "set_pay_item_material_status")) {
+      get().pushToast("error", "Only Documentation / Admin can set Pay Item Material Status.");
+      return;
+    }
+    const key = `${itemId}:${payItemNumber}`;
+    const prev = get().payItemStatusDeltas[key];
+    set({ payItemStatusDeltas: { ...get().payItemStatusDeltas, [key]: { status, note } } });
+    void persist(
+      get,
+      set,
+      async (ds) => ds.persistPayItemMaterialStatus(itemId, payItemNumber, status, note),
+      () => {
+        const next = { ...get().payItemStatusDeltas };
+        if (prev) next[key] = prev;
+        else delete next[key];
+        set({ payItemStatusDeltas: next });
+      },
+      "Couldn't save Pay Item Material Status",
+    );
   },
 
   upsertSample(sample) {
@@ -400,6 +504,20 @@ function recomputeCounts(get: () => State, set: (p: Partial<State>) => void, aff
     contracts,
     contractsById: new Map(contracts.map((c) => [c.id, c])),
   });
+}
+
+function recomputeContractCounts(get: () => State, set: (p: Partial<State>) => void, contractId: string) {
+  let inv = 0;
+  let ready = 0;
+  for (const it of get().items) {
+    if (it.contractId !== contractId) continue;
+    inv++;
+    if (it.status === "Ready for Review") ready++;
+  }
+  const contracts = get().contracts.map((c) =>
+    c.id === contractId ? { ...c, inventoryCount: inv, readyForReviewCount: ready } : c,
+  );
+  set({ contracts, contractsById: new Map(contracts.map((c) => [c.id, c])) });
 }
 
 async function persist(

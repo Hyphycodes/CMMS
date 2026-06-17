@@ -9,8 +9,18 @@ import type {
   LoadResult,
   InventoryStatusUpdate,
   EoiDelta,
+  PayItemMaterialStatusDelta,
 } from "../dataSource";
-import type { EOIApproval, InventoryStatus, Sample, Test } from "@/domain/types";
+import type {
+  EOIApproval,
+  InventoryStatus,
+  Sample,
+  Test,
+  LedgerEntry,
+  EOIEntry,
+  InventoryItem,
+  PayItemMaterialStatus,
+} from "@/domain/types";
 import { generateWorld, type SeedConfig } from "../seed/generate";
 
 const STORAGE_KEY = "proof:deltas:v1";
@@ -21,10 +31,24 @@ interface StoredDeltas {
   eoiApproval: Record<string, EoiDelta>;
   samples: Record<string, Sample>;
   tests: Record<string, Test>;
+  inventoryItems: Record<string, InventoryItem>;
+  ledgers: Record<string, LedgerEntry[]>;
+  eois: Record<string, EOIEntry[]>;
+  payItemStatus: Record<string, PayItemMaterialStatusDelta>;
 }
 
 function emptyDeltas(): StoredDeltas {
-  return { inventoryStatus: {}, inventoryNote: {}, eoiApproval: {}, samples: {}, tests: {} };
+  return {
+    inventoryStatus: {},
+    inventoryNote: {},
+    eoiApproval: {},
+    samples: {},
+    tests: {},
+    inventoryItems: {},
+    ledgers: {},
+    eois: {},
+    payItemStatus: {},
+  };
 }
 
 function readDeltas(): StoredDeltas {
@@ -65,7 +89,8 @@ export function createLocalDataSource(): DataSource {
       const world = generateWorld(config);
       const deltas = readDeltas();
 
-      // Apply persisted inventory status + note deltas onto the seed.
+      // Overlay created / edited inventory items (brief 05), then status + note.
+      world.items = overlay(world.items, deltas.inventoryItems, (i) => i.id);
       for (const item of world.items) {
         const s = deltas.inventoryStatus[item.id];
         if (s) {
@@ -76,19 +101,30 @@ export function createLocalDataSource(): DataSource {
         if (n !== undefined) item.note = n;
       }
       // Recompute denormalized counts after applying deltas.
+      const inv = new Map<string, number>();
       const ready = new Map<string, number>();
       for (const it of world.items) {
+        inv.set(it.contractId, (inv.get(it.contractId) ?? 0) + 1);
         if (it.status === "Ready for Review") {
           ready.set(it.contractId, (ready.get(it.contractId) ?? 0) + 1);
         }
       }
-      for (const c of world.contracts) c.readyForReviewCount = ready.get(c.id) ?? 0;
+      for (const c of world.contracts) {
+        c.inventoryCount = inv.get(c.id) ?? 0;
+        c.readyForReviewCount = ready.get(c.id) ?? 0;
+      }
 
       // Overlay sample / test deltas (upserts by id; new rows append).
       world.samples = overlay(world.samples, deltas.samples, (s) => s.id);
       world.tests = overlay(world.tests, deltas.tests, (t) => t.id);
 
-      return { world, eoiDeltas: deltas.eoiApproval };
+      return {
+        world,
+        eoiDeltas: deltas.eoiApproval,
+        ledgerDeltas: deltas.ledgers,
+        eoiRowDeltas: deltas.eois,
+        payItemStatusDeltas: deltas.payItemStatus,
+      };
     },
 
     async persistInventoryStatus(updates: InventoryStatusUpdate[]): Promise<void> {
@@ -135,6 +171,46 @@ export function createLocalDataSource(): DataSource {
       maybeFail();
       const d = readDeltas();
       d.tests[test.id] = test;
+      writeDeltas(d);
+    },
+
+    async persistInventoryItem(item: InventoryItem): Promise<void> {
+      await latency();
+      maybeFail();
+      const d = readDeltas();
+      d.inventoryItems[item.id] = item;
+      // keep status/note column deltas coherent for created/edited items
+      d.inventoryStatus[item.id] = { status: item.status, readyAt: item.readyAt };
+      d.inventoryNote[item.id] = item.note;
+      writeDeltas(d);
+    },
+
+    async persistLedger(itemId: string, rows: LedgerEntry[]): Promise<void> {
+      await latency();
+      maybeFail();
+      const d = readDeltas();
+      d.ledgers[itemId] = rows;
+      writeDeltas(d);
+    },
+
+    async persistEoi(itemId: string, rows: EOIEntry[]): Promise<void> {
+      await latency();
+      maybeFail();
+      const d = readDeltas();
+      d.eois[itemId] = rows;
+      writeDeltas(d);
+    },
+
+    async persistPayItemMaterialStatus(
+      itemId: string,
+      payItemNumber: string,
+      status: PayItemMaterialStatus,
+      note: string,
+    ): Promise<void> {
+      await latency();
+      maybeFail();
+      const d = readDeltas();
+      d.payItemStatus[`${itemId}:${payItemNumber}`] = { status, note };
       writeDeltas(d);
     },
   };

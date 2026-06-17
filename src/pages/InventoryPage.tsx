@@ -5,8 +5,9 @@ import { useStore } from "@/store/store";
 import { INVENTORY_STATUSES, type InventoryItem, type InventoryStatus } from "@/domain/types";
 import { InventoryGrid } from "@/components/inventory/InventoryGrid";
 import { ItemDetailDrawer } from "@/components/inventory/ItemDetailDrawer";
+import { InventoryForm } from "@/components/inventory/InventoryForm";
 import { ContextMenu, type MenuItem } from "@/components/ui/ContextMenu";
-import { SearchIcon } from "@/components/ui/icons";
+import { SearchIcon, PlusIcon } from "@/components/ui/icons";
 
 const PERF_OPTIONS = [
   { label: "1k", value: 1000 },
@@ -21,6 +22,7 @@ export function InventoryPage() {
 
   const contract = useStore((s) => (contractId ? s.contract(contractId) : undefined));
   const canAccess = useStore((s) => (contractId ? s.canAccessContract(contractId) : false));
+  const canCreate = useStore((s) => s.can("create_inventory"));
   const allItems = useStore((s) => s.items);
   const setInventoryStatus = useStore((s) => s.setInventoryStatus);
 
@@ -128,25 +130,40 @@ export function InventoryPage() {
           <span className="text-sm text-ink-faint">
             {perfCount > 0 ? `${perfCount.toLocaleString()} rows (perf preview)` : `${counts.All} items`}
           </span>
-          {perfEnabled && (
-            <div className="ml-auto flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 p-0.5">
-              <span className="px-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
-                Perf
-              </span>
-              {[{ label: "off", value: 0 }, ...PERF_OPTIONS].map((o) => (
-                <button
-                  key={o.value}
-                  onClick={() => setPerfCount(o.value)}
-                  className={[
-                    "rounded px-2 py-1 text-xs font-medium transition",
-                    perfCount === o.value ? "bg-amber-500 text-white" : "text-amber-700 hover:bg-amber-100",
-                  ].join(" ")}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (!canCreate) return;
+                const next = new URLSearchParams(params);
+                next.set("new", "1");
+                setParams(next, { replace: true });
+              }}
+              disabled={!canCreate}
+              title={canCreate ? undefined : "Your role can't create inventory."}
+              className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <PlusIcon className="text-base" /> Add Inventory
+            </button>
+            {perfEnabled && (
+              <div className="flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 p-0.5">
+                <span className="px-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+                  Perf
+                </span>
+                {[{ label: "off", value: 0 }, ...PERF_OPTIONS].map((o) => (
+                  <button
+                    key={o.value}
+                    onClick={() => setPerfCount(o.value)}
+                    className={[
+                      "rounded px-2 py-1 text-xs font-medium transition",
+                      perfCount === o.value ? "bg-amber-500 text-white" : "text-amber-700 hover:bg-amber-100",
+                    ].join(" ")}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -240,6 +257,23 @@ export function InventoryPage() {
 
       {menu && (
         <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.item)} onClose={() => setMenu(null)} />
+      )}
+
+      {params.get("new") === "1" && contractId && (
+        <InventoryForm
+          contractId={contractId}
+          onClose={() => {
+            const next = new URLSearchParams(params);
+            next.delete("new");
+            setParams(next, { replace: true });
+          }}
+          onSaved={(id) => {
+            const next = new URLSearchParams(params);
+            next.delete("new");
+            setParams(next, { replace: true });
+            navigate(`/contract/${contractId}/inventory/${id}`);
+          }}
+        />
       )}
 
       {itemId && (

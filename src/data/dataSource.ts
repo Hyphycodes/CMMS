@@ -8,7 +8,16 @@
  *
  * Architecture: load the world ONCE, work in the browser, persist only deltas.
  */
-import type { InventoryStatus, EOIApproval, Sample, Test } from "@/domain/types";
+import type {
+  InventoryStatus,
+  EOIApproval,
+  Sample,
+  Test,
+  LedgerEntry,
+  EOIEntry,
+  InventoryItem,
+  PayItemMaterialStatus,
+} from "@/domain/types";
 import type { World, SeedConfig } from "./seed/generate";
 
 export interface EoiDelta {
@@ -16,10 +25,21 @@ export interface EoiDelta {
   note: string;
 }
 
+export interface PayItemMaterialStatusDelta {
+  status: PayItemMaterialStatus;
+  note: string;
+}
+
 export interface LoadResult {
   world: World;
   /** keyed by `${itemId}:${eoiId}` */
   eoiDeltas: Record<string, EoiDelta>;
+  /** writable Quantity Ledger rows, keyed by itemId (brief 05) */
+  ledgerDeltas: Record<string, LedgerEntry[]>;
+  /** writable EOI rows, keyed by itemId (brief 05) */
+  eoiRowDeltas: Record<string, EOIEntry[]>;
+  /** Pay Item Material Status overrides, keyed by `${itemId}:${payItemNumber}` */
+  payItemStatusDeltas: Record<string, PayItemMaterialStatusDelta>;
 }
 
 export interface InventoryStatusUpdate {
@@ -46,6 +66,17 @@ export interface DataSource {
   // on the upserted object, so the seam stays two parallel upserts.
   persistSample(sample: Sample): Promise<void>;
   persistTest(test: Test): Promise<void>;
+
+  // Inventory writes (brief 05).
+  persistInventoryItem(item: InventoryItem): Promise<void>;
+  persistLedger(itemId: string, rows: LedgerEntry[]): Promise<void>;
+  persistEoi(itemId: string, rows: EOIEntry[]): Promise<void>;
+  persistPayItemMaterialStatus(
+    itemId: string,
+    payItemNumber: string,
+    status: PayItemMaterialStatus,
+    note: string,
+  ): Promise<void>;
 }
 
 let cached: DataSource | null = null;

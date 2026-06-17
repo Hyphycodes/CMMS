@@ -23,6 +23,9 @@ import type {
   EOIApproval,
   Sample,
   Test,
+  LedgerEntry,
+  EOIEntry,
+  PayItemMaterialStatus,
 } from "@/domain/types";
 import type { SeedConfig, World } from "../seed/generate";
 import { TEST_TEMPLATES } from "../seed/generate";
@@ -79,7 +82,13 @@ export function createSupabaseDataSource(): DataSource {
         tests: [],
         testTemplates: TEST_TEMPLATES,
       };
-      return { world, eoiDeltas };
+      return {
+        world,
+        eoiDeltas,
+        ledgerDeltas: {},
+        eoiRowDeltas: {},
+        payItemStatusDeltas: {},
+      };
     },
 
     async persistInventoryStatus(updates: InventoryStatusUpdate[]): Promise<void> {
@@ -118,6 +127,79 @@ export function createSupabaseDataSource(): DataSource {
       const { error } = await db.from("tests").upsert(testToRow(test), { onConflict: "id" });
       if (error) throw error;
     },
+
+    async persistInventoryItem(item: InventoryItem): Promise<void> {
+      const { error } = await db.from("inventory_items").upsert(itemToRow(item), { onConflict: "id" });
+      if (error) throw error;
+    },
+
+    async persistLedger(itemId: string, rows: LedgerEntry[]): Promise<void> {
+      // replace-by-item semantics
+      const del = await db.from("quantity_ledgers").delete().eq("item_id", itemId);
+      if (del.error) throw del.error;
+      if (rows.length) {
+        const { error } = await db
+          .from("quantity_ledgers")
+          .insert(rows.map((r) => ({ ...r, item_id: itemId })));
+        if (error) throw error;
+      }
+    },
+
+    async persistEoi(itemId: string, rows: EOIEntry[]): Promise<void> {
+      const del = await db.from("eoi_entries").delete().eq("item_id", itemId);
+      if (del.error) throw del.error;
+      if (rows.length) {
+        const { error } = await db.from("eoi_entries").insert(
+          rows.map((r) => ({
+            id: r.id,
+            item_id: itemId,
+            ledger_ids: r.ledgerIds,
+            actual_eoi: r.actualEoi,
+            actual_moa: r.actualMoa,
+            test_id: r.testId,
+            approval: r.approval,
+            note: r.note,
+            has_document: r.hasDocument,
+          })),
+        );
+        if (error) throw error;
+      }
+    },
+
+    async persistPayItemMaterialStatus(
+      itemId: string,
+      payItemNumber: string,
+      status: PayItemMaterialStatus,
+      note: string,
+    ): Promise<void> {
+      const { error } = await db
+        .from("pay_item_materials")
+        .upsert(
+          { item_id: itemId, pay_item_number: payItemNumber, status, note },
+          { onConflict: "item_id,pay_item_number" },
+        );
+      if (error) throw error;
+    },
+  };
+}
+
+function itemToRow(i: InventoryItem): Record<string, unknown> {
+  return {
+    id: i.id,
+    inventory_id: i.inventoryId,
+    contract_id: i.contractId,
+    contract_number: i.contractNumber,
+    material_code: i.materialCode,
+    material_name: i.materialName,
+    material_unit: i.materialUnit,
+    producer_number: i.producerNumber,
+    producer_name: i.producerName,
+    supplier_number: i.supplierNumber,
+    supplier_name: i.supplierName,
+    status: i.status,
+    note: i.note,
+    pay_item_numbers: i.payItemNumbers,
+    ready_at: i.readyAt ? new Date(i.readyAt).toISOString() : null,
   };
 }
 
