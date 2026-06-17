@@ -8,7 +8,6 @@
 import type { Material, MaterialFamily, Vendor } from "@/domain/types";
 import materialsData from "./reference/materials.json";
 import vendorsData from "./reference/vendors.json";
-import myMaterialsFilter from "./reference/my_materials_filter.json";
 
 /**
  * Per-family conversion-factor preset (DECISIONS D8). The PDFs do NOT publish a
@@ -43,8 +42,10 @@ const FAMILY_BY_NAME: Record<string, MaterialFamily> = {
 // --- Materials -------------------------------------------------------------
 // Real CMMS Part 3 codes. moa + acceptableEoi come from the data; conversionFactor
 // is resolved by family (see above) since the source omits it.
-// ALL_MATERIALS keeps the full 1,481-code master in memory for any code lookup;
-// MATERIALS (below) is the SURFACED set — the codes the inspector actually works.
+// The FULL 1,481-code master is surfaced everywhere — material pickers (Add
+// Sample, Create Inventory), the Material Definition list, code lookups, and the
+// seed all draw from it. (The user's real samples come from my_samples.json and
+// are independent of this list.)
 export const ALL_MATERIALS: Material[] = materialsData.map((m): Material => {
   const family = FAMILY_BY_NAME[m.family] ?? "Other";
   return {
@@ -65,41 +66,11 @@ export const ALL_MATERIALS: Material[] = materialsData.map((m): Material => {
   };
 });
 
-const ALL_BY_CODE = new Map(ALL_MATERIALS.map((m) => [m.code, m]));
-
 /**
- * The SURFACED material set — only the codes the inspector inspects
- * (my_materials_filter.json). The Material Definition list, every material
- * picker, AND the seed all draw from this list (the inspector's real 9 codes).
- * Each is resolved from the real CMMS master by code; a code missing from the
- * master is synthesized from the filter name (family inferred, factor by family).
+ * MATERIALS is the full CMMS master — the complete 1,481-code database. Every
+ * material picker, the Material Definition list, and the seed draw from it.
  */
-export const MATERIALS: Material[] = myMaterialsFilter.map((f): Material => {
-  const real = ALL_BY_CODE.get(f.code);
-  if (real) return real;
-  const family = inferFamily(f.name);
-  return {
-    code: f.code,
-    name: f.name,
-    unit: "",
-    family,
-    conversionFactor: CONVERSION_FACTOR_BY_FAMILY[family],
-    moa: "",
-    acceptableEoi: [],
-  };
-});
-
-/** Keyword family inference for any code absent from the master (rare). */
-function inferFamily(name: string): MaterialFamily {
-  const n = name.toUpperCase();
-  if (/\bBAR\b|REBAR|STEEL|COUPLER|SPLICE/.test(n)) return "Steel";
-  if (/HMA|ASPHALT|BITUMIN/.test(n)) return "HMA";
-  if (/CONCRETE|GROUT|CURING|PCC/.test(n)) return "Concrete";
-  if (/PAINT|MARKING|THERMO/.test(n)) return "Paint";
-  if (/AGGREGATE|GRAVEL|STONE/.test(n)) return "Aggregate";
-  if (/SOIL|TOPSOIL/.test(n)) return "Soil";
-  return "Other";
-}
+export const MATERIALS: Material[] = ALL_MATERIALS;
 
 /**
  * Per-code conversion factors are defaulted by family — every code is a candidate
