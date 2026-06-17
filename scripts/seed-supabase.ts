@@ -67,6 +67,8 @@ async function main() {
       unit_price: p.unitPrice,
       awarded_quantity: p.awardedQuantity,
       placed_quantity: p.placedQuantity,
+      fund_key: p.fundKey ?? null,
+      final: p.final ?? false,
     })),
   );
 
@@ -88,10 +90,55 @@ async function main() {
     ready_at: i.readyAt ? new Date(i.readyAt).toISOString() : null,
   }));
 
+  // Module tables (briefs 03–11). Requires 0002_modules.sql applied.
+  const sampleRows = world.samples.map((s) => ({
+    id: s.id, sample_identifier: s.sampleIdentifier, test_id: s.testId, inspection_type: s.inspectionType, inspector: s.inspector,
+    sample_date: s.sampleDate, total_samples: s.totalSamples, material_code: s.materialCode, material_name: s.materialName,
+    desc1: s.desc1, desc2: s.desc2, desc3: s.desc3, special_id: s.specialId, inspected_qty: s.inspectedQty, material_unit: s.materialUnit,
+    producer_number: s.producerNumber, producer_name: s.producerName, supplier_number: s.supplierNumber, supplier_name: s.supplierName,
+    sampled_from: s.sampledFrom, latitude: s.latitude, longitude: s.longitude, spec_year: s.specYear, dsa_baba: s.dsaBaba,
+    responsible_lab: s.responsibleLab, contract_id: s.contractId, pay_item_number: s.payItemNumber, inventory_item_id: s.inventoryItemId,
+    received_date: s.receivedDate, started_date: s.startedDate, completed_date: s.completedDate, status: s.status,
+    approver_name: s.approverName, approved_date: s.approvedDate, note: s.note, has_document: s.hasDocument,
+  }));
+  const testRows = world.tests.map((t) => ({
+    id: t.id, sample_id: t.sampleId, series: t.series, test_type: t.testType, tested_by: t.testedBy, test_date: t.testDate,
+    fields: t.fields, validated: t.validated, validated_by: t.validatedBy, validated_at: t.validatedAt,
+  }));
+  const placementRows = world.placements.map((p) => ({
+    id: p.id, contract_id: p.contractId, pay_item_number: p.payItemNumber, date: p.date, fund_key: p.fundKey, type: p.type,
+    quantity: p.quantity, price: p.price, location: p.location, contractor: p.contractor, posted: p.posted, pay_estimate_id: p.payEstimateId, creator: p.creator,
+  }));
+  const estimateRows = world.payEstimates.map((e) => ({
+    id: e.id, contract_id: e.contractId, number: e.number, period_start: e.periodStart, period_end: e.periodEnd, status: e.status,
+    submitted_by: e.submittedBy, submitted_at: e.submittedAt, lines: e.lines, this_estimate_total: e.thisEstimateTotal, to_date_total: e.toDateTotal,
+  }));
+  const authRows = world.authorizations.map((a) => ({
+    id: a.id, contract_id: a.contractId, number: a.number, type: a.type, description: a.description, net_change: a.netChange,
+    status: a.status, created_date: a.createdDate, items: a.items, approvals: a.approvals, has_attachment: a.hasAttachment,
+  }));
+  const mixRows = world.mixDesigns.map((m) => ({
+    number: m.number, material_code: m.materialCode, family: m.family, producer: m.producer, approved: m.approved, doc_url: m.docUrl ?? null,
+  }));
+  const suspensionRows = [...world.suspensionsByContract.values()].flat().map((s) => ({
+    contract_id: s.contractId, from_date: s.from, to_date: s.to, reason: s.reason,
+  }));
+
   console.log(`Seeding ${contractRows.length} contracts, ${payItemRows.length} pay items, ${itemRows.length} inventory items…`);
   await upsert("contracts", contractRows, "id");
   await upsert("pay_items", payItemRows, "contract_id,number");
   await upsert("inventory_items", itemRows, "id");
+  console.log(`Seeding ${sampleRows.length} samples, ${testRows.length} tests, ${placementRows.length} placements, ${estimateRows.length} estimates, ${authRows.length} authorizations…`);
+  await upsert("samples", sampleRows, "id");
+  await upsert("tests", testRows, "id");
+  await upsert("placements", placementRows, "id");
+  await upsert("pay_estimates", estimateRows, "id");
+  await upsert("authorizations", authRows, "id");
+  await upsert("mix_designs", mixRows, "number");
+  if (suspensionRows.length) {
+    const { error } = await db.from("diary_suspensions").insert(suspensionRows);
+    if (error) console.warn("diary_suspensions:", error.message);
+  }
   console.log("✓ Seed complete.");
 }
 

@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "seed:supabase": "tsx scripts/seed-supabase.ts"
+    "seed:supabase": "tsx scripts/seed-supabase.ts",
+    "import": "tsx scripts/import-contracts.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.48.1",

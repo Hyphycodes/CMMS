@@ -31,6 +31,8 @@ import type {
   PlacementEntry,
   PayEstimate,
   Authorization,
+  MixDesign,
+  MaterialFamily,
 } from "@/domain/types";
 import type { SeedConfig, World } from "../seed/generate";
 import { TEST_TEMPLATES } from "../seed/generate";
@@ -54,11 +56,27 @@ export function createSupabaseDataSource(): DataSource {
     name: "supabase",
 
     async loadWorld(_config: SeedConfig): Promise<LoadResult> {
-      const [contractsRes, payItemsRes, itemsRes, reviewsRes] = await Promise.all([
+      // RLS returns only the authenticated user's scoped rows (brief 02/12).
+      const [
+        contractsRes, payItemsRes, itemsRes, reviewsRes,
+        samplesRes, testsRes, placementsRes, estimatesRes, authsRes, mixRes, suspRes,
+        ledgersRes, eoiEntriesRes, pimRes, diaryRes,
+      ] = await Promise.all([
         db.from("contracts").select("*"),
         db.from("pay_items").select("*"),
         db.from("inventory_items").select("*"),
         db.from("eoi_reviews").select("*"),
+        db.from("samples").select("*"),
+        db.from("tests").select("*"),
+        db.from("placements").select("*"),
+        db.from("pay_estimates").select("*"),
+        db.from("authorizations").select("*"),
+        db.from("mix_designs").select("*"),
+        db.from("diary_suspensions").select("*"),
+        db.from("quantity_ledgers").select("*"),
+        db.from("eoi_entries").select("*"),
+        db.from("pay_item_materials").select("*"),
+        db.from("diary_days").select("*"),
       ]);
       if (contractsRes.error) throw contractsRes.error;
       if (itemsRes.error) throw itemsRes.error;
@@ -77,28 +95,60 @@ export function createSupabaseDataSource(): DataSource {
         eoiDeltas[`${r.item_id}:${r.eoi_id}`] = { approval: r.approval, note: r.note ?? "" };
       }
 
-      // Samples/tests load lands with their tables in brief 12; templates ship
-      // as a constant. Empty here keeps the seam stable for the active source.
+      const suspensionsByContract = new Map<string, DiarySuspension[]>();
+      for (const r of suspRes.data ?? []) {
+        const s: DiarySuspension = { contractId: r.contract_id, from: r.from_date, to: r.to_date ?? null, reason: r.reason ?? "" };
+        const arr = suspensionsByContract.get(s.contractId) ?? [];
+        arr.push(s);
+        suspensionsByContract.set(s.contractId, arr);
+      }
+
+      const ledgerDeltas: Record<string, LedgerEntry[]> = {};
+      for (const r of ledgersRes.data ?? []) {
+        (ledgerDeltas[r.item_id] ??= []).push({
+          id: r.id, date: r.date, payItemNumber: r.pay_item_number ?? "", desc1: r.desc1 ?? "", desc2: r.desc2 ?? "",
+          desc3: r.desc3 ?? "", mixDesign: r.mix_design ?? "", batchLotHeat: r.batch_lot_heat ?? "", type: r.type, transactionQty: Number(r.transaction_qty),
+        });
+      }
+      const eoiRowDeltas: Record<string, EOIEntry[]> = {};
+      for (const r of eoiEntriesRes.data ?? []) {
+        (eoiRowDeltas[r.item_id] ??= []).push({
+          id: r.id, ledgerIds: r.ledger_ids ?? [], actualEoi: r.actual_eoi ?? [], actualMoa: r.actual_moa ?? [],
+          testId: r.test_id ?? "", approval: r.approval, note: r.note ?? "", hasDocument: !!r.has_document,
+        });
+      }
+      const payItemStatusDeltas: LoadResult["payItemStatusDeltas"] = {};
+      for (const r of pimRes.data ?? []) {
+        payItemStatusDeltas[`${r.item_id}:${r.pay_item_number}`] = { status: r.status, note: r.note ?? "" };
+      }
+      const diaryDeltas: LoadResult["diaryDeltas"] = {};
+      for (const r of diaryRes.data ?? []) {
+        diaryDeltas[`${r.contract_id}:${r.date}`] = {
+          contractId: r.contract_id, date: r.date, weather: r.weather, controllingItem: r.controlling_item ?? "",
+          contractorWork: r.contractor_work ?? [], projectLog: r.project_log ?? "", signedBy: r.signed_by ?? null, signedAt: r.signed_at ?? null,
+        };
+      }
+
       const world: World = {
         contracts,
         items,
         payItemsByContract,
-        samples: [],
-        tests: [],
+        samples: (samplesRes.data ?? []).map(rowToSample),
+        tests: (testsRes.data ?? []).map(rowToTest),
         testTemplates: TEST_TEMPLATES,
-        suspensionsByContract: new Map(),
-        placements: [],
-        payEstimates: [],
-        authorizations: [],
-        mixDesigns: [],
+        suspensionsByContract,
+        placements: (placementsRes.data ?? []).map(rowToPlacement),
+        payEstimates: (estimatesRes.data ?? []).map(rowToPayEstimate),
+        authorizations: (authsRes.data ?? []).map(rowToAuthorization),
+        mixDesigns: (mixRes.data ?? []).map(rowToMixDesign),
       };
       return {
         world,
         eoiDeltas,
-        ledgerDeltas: {},
-        eoiRowDeltas: {},
-        payItemStatusDeltas: {},
-        diaryDeltas: {},
+        ledgerDeltas,
+        eoiRowDeltas,
+        payItemStatusDeltas,
+        diaryDeltas,
         placementDeltas: {},
         payItemDeltas: {},
         payEstimateDeltas: {},
@@ -427,6 +477,56 @@ function rowToPayItem(r: Record<string, unknown>): PayItem {
     awardedQuantity: r.awarded_quantity as number,
     placedQuantity: r.placed_quantity as number,
   };
+}
+
+type Row = Record<string, unknown>;
+const str = (v: unknown, d = ""): string => (v == null ? d : String(v));
+const sOrNull = (v: unknown): string | null => (v == null ? null : String(v));
+const num = (v: unknown): number => Number(v ?? 0);
+
+function rowToSample(r: Row): Sample {
+  return {
+    id: str(r.id), sampleIdentifier: str(r.sample_identifier), testId: str(r.test_id), inspectionType: str(r.inspection_type),
+    inspector: str(r.inspector), sampleDate: str(r.sample_date), totalSamples: num(r.total_samples),
+    materialCode: str(r.material_code), materialName: str(r.material_name), desc1: str(r.desc1), desc2: str(r.desc2),
+    desc3: str(r.desc3), specialId: str(r.special_id), inspectedQty: num(r.inspected_qty), materialUnit: str(r.material_unit),
+    producerNumber: str(r.producer_number), producerName: str(r.producer_name), supplierNumber: str(r.supplier_number), supplierName: str(r.supplier_name),
+    sampledFrom: str(r.sampled_from), latitude: str(r.latitude), longitude: str(r.longitude), specYear: str(r.spec_year),
+    dsaBaba: !!r.dsa_baba, responsibleLab: str(r.responsible_lab), contractId: sOrNull(r.contract_id), payItemNumber: sOrNull(r.pay_item_number),
+    inventoryItemId: sOrNull(r.inventory_item_id), receivedDate: sOrNull(r.received_date), startedDate: sOrNull(r.started_date),
+    completedDate: sOrNull(r.completed_date), status: r.status as Sample["status"], approverName: str(r.approver_name), approvedDate: sOrNull(r.approved_date),
+    note: str(r.note), hasDocument: !!r.has_document,
+  };
+}
+function rowToTest(r: Row): Test {
+  return {
+    id: str(r.id), sampleId: str(r.sample_id), series: num(r.series), testType: str(r.test_type), testedBy: str(r.tested_by),
+    testDate: sOrNull(r.test_date), fields: (r.fields as Test["fields"]) ?? [], validated: !!r.validated, validatedBy: str(r.validated_by), validatedAt: sOrNull(r.validated_at),
+  };
+}
+function rowToPlacement(r: Row): PlacementEntry {
+  return {
+    id: str(r.id), payItemNumber: str(r.pay_item_number), contractId: str(r.contract_id), date: str(r.date), fundKey: str(r.fund_key),
+    type: r.type as PlacementEntry["type"], quantity: num(r.quantity), price: num(r.price), location: str(r.location), contractor: str(r.contractor),
+    posted: !!r.posted, payEstimateId: sOrNull(r.pay_estimate_id), creator: str(r.creator),
+  };
+}
+function rowToPayEstimate(r: Row): PayEstimate {
+  return {
+    id: str(r.id), contractId: str(r.contract_id), number: num(r.number), periodStart: str(r.period_start), periodEnd: str(r.period_end),
+    status: r.status as PayEstimate["status"], submittedBy: sOrNull(r.submitted_by), submittedAt: sOrNull(r.submitted_at), lines: (r.lines as PayEstimate["lines"]) ?? [],
+    thisEstimateTotal: num(r.this_estimate_total), toDateTotal: num(r.to_date_total),
+  };
+}
+function rowToAuthorization(r: Row): Authorization {
+  return {
+    id: str(r.id), contractId: str(r.contract_id), number: num(r.number), type: r.type as Authorization["type"], description: str(r.description),
+    netChange: num(r.net_change), status: r.status as Authorization["status"], createdDate: str(r.created_date), items: (r.items as Authorization["items"]) ?? [],
+    approvals: (r.approvals as Authorization["approvals"]) ?? [], hasAttachment: !!r.has_attachment,
+  };
+}
+function rowToMixDesign(r: Row): MixDesign {
+  return { number: str(r.number), materialCode: str(r.material_code), family: (str(r.family, "Other")) as MaterialFamily, producer: str(r.producer), approved: !!r.approved, docUrl: r.doc_url ? str(r.doc_url) : undefined };
 }
 
 function rowToItem(r: Record<string, unknown>): InventoryItem {
