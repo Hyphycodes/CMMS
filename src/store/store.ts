@@ -22,9 +22,11 @@ import type {
   PayItemMaterialStatus,
   SubcontractorRow,
   ProjectDocumentRow,
+  DiaryDay,
+  DiarySuspension,
 } from "@/domain/types";
 import { getDataSource } from "@/data/dataSource";
-import { DEFAULT_SEED_CONFIG, buildOverlaidDetail } from "@/data/seed/generate";
+import { DEFAULT_SEED_CONFIG, buildOverlaidDetail, buildDiaryDay } from "@/data/seed/generate";
 import type { EoiDelta, PayItemMaterialStatusDelta } from "@/data/dataSource";
 import { buildDemoUsers, DEFAULT_USER_ID } from "@/auth/demoUsers";
 import { can as canDo, visibleContractIds, type Capability } from "@/auth/permissions";
@@ -50,6 +52,10 @@ interface State {
   ledgerDeltas: Record<string, LedgerEntry[]>;
   eoiRowDeltas: Record<string, EOIEntry[]>;
   payItemStatusDeltas: Record<string, PayItemMaterialStatusDelta>;
+
+  // diary (brief 07)
+  diaryDeltas: Record<string, DiaryDay>;
+  suspensionsByContract: Map<string, DiarySuspension[]>;
 
   // samples + tests (briefs 03–04)
   samplesList: Sample[];
@@ -79,6 +85,9 @@ interface State {
   samples(): Sample[];
   sample(id: string): Sample | undefined;
   testsForSample(sampleId: string): Test[];
+  diaryDay(contractId: string, date: string): DiaryDay | undefined;
+  diaryRange(contractId: string, from: string, to: string): DiaryDay[];
+  suspensions(contractId: string): DiarySuspension[];
 
   // mutations (optimistic)
   setInventoryStatus(ids: string[], status: InventoryStatus, opts?: { note?: string }): void;
@@ -94,6 +103,11 @@ interface State {
   // contract sub-tabs (brief 06) — in-memory until persistence lands in brief 12
   addSubcontractor(contractId: string, row: SubcontractorRow): void;
   addProjectDocument(contractId: string, row: ProjectDocumentRow): void;
+
+  // diary (brief 07)
+  saveDiaryDay(day: DiaryDay): void;
+  signDiaryDay(contractId: string, date: string): void;
+  addSuspension(suspension: DiarySuspension): void;
 
   // samples + tests (briefs 03–04)
   upsertSample(sample: Sample): void;
@@ -122,6 +136,9 @@ export const useStore = create<State>((set, get) => ({
   eoiRowDeltas: {},
   payItemStatusDeltas: {},
 
+  diaryDeltas: {},
+  suspensionsByContract: new Map(),
+
   samplesList: [],
   testsList: [],
   testTemplates: [],
@@ -138,7 +155,7 @@ export const useStore = create<State>((set, get) => ({
     set({ status: "loading" });
     try {
       const ds = await getDataSource();
-      const { world, eoiDeltas, ledgerDeltas, eoiRowDeltas, payItemStatusDeltas } =
+      const { world, eoiDeltas, ledgerDeltas, eoiRowDeltas, payItemStatusDeltas, diaryDeltas } =
         await ds.loadWorld(DEFAULT_SEED_CONFIG);
       const users = buildDemoUsers(world.contracts, world.items);
       const savedId = (() => {
@@ -160,6 +177,8 @@ export const useStore = create<State>((set, get) => ({
         ledgerDeltas,
         eoiRowDeltas,
         payItemStatusDeltas,
+        diaryDeltas,
+        suspensionsByContract: world.suspensionsByContract,
         samplesList: world.samples,
         testsList: world.tests,
         testTemplates: world.testTemplates,
@@ -235,6 +254,27 @@ export const useStore = create<State>((set, get) => ({
     get()
       .testsList.filter((t) => t.sampleId === sampleId)
       .sort((a, b) => a.series - b.series),
+
+  diaryDay: (contractId, date) => {
+    const delta = get().diaryDeltas[`${contractId}:${date}`];
+    if (delta) return delta;
+    const contract = get().contractsById.get(contractId);
+    return contract ? buildDiaryDay(contract, date) : undefined;
+  },
+  diaryRange: (contractId, from, to) => {
+    const contract = get().contractsById.get(contractId);
+    if (!contract) return [];
+    const out: DiaryDay[] = [];
+    const start = new Date(from + "T00:00:00").getTime();
+    const end = new Date(to + "T00:00:00").getTime();
+    const deltas = get().diaryDeltas;
+    for (let t = start; t <= end; t += 86_400_000) {
+      const date = new Date(t).toISOString().slice(0, 10);
+      out.push(deltas[`${contractId}:${date}`] ?? buildDiaryDay(contract, date));
+    }
+    return out;
+  },
+  suspensions: (contractId) => get().suspensionsByContract.get(contractId) ?? [],
 
   setInventoryStatus(ids, status, opts) {
     if (ids.length === 0) return;
@@ -392,6 +432,66 @@ export const useStore = create<State>((set, get) => ({
     }
     updateContractInMemory(get, set, contractId, (c) => ({ ...c, projectDocuments: [...c.projectDocuments, row] }));
     get().pushToast("info", "Document added (file upload + storage lands in brief 12).");
+  },
+
+  saveDiaryDay(day) {
+    if (!canDo(get().currentUser, "author_contract")) {
+      get().pushToast("error", "Your role can't edit the diary.");
+      return;
+    }
+    const key = `${day.contractId}:${day.date}`;
+    const prev = get().diaryDeltas[key];
+    set({ diaryDeltas: { ...get().diaryDeltas, [key]: day } });
+    void persist(
+      get,
+      set,
+      async (ds) => ds.persistDiaryDay(day),
+      () => {
+        const next = { ...get().diaryDeltas };
+        if (prev) next[key] = prev;
+        else delete next[key];
+        set({ diaryDeltas: next });
+      },
+      "Couldn't save diary",
+    );
+  },
+
+  signDiaryDay(contractId, date) {
+    if (!canDo(get().currentUser, "author_contract")) {
+      get().pushToast("error", "Your role can't sign the diary.");
+      return;
+    }
+    const day = get().diaryDay(contractId, date);
+    if (!day) return;
+    const signed: DiaryDay = {
+      ...day,
+      signedBy: get().currentUser?.name ?? "",
+      signedAt: new Date().toISOString().slice(0, 10),
+    };
+    get().saveDiaryDay(signed);
+    get().pushToast("success", `Diary signed for ${date}`);
+  },
+
+  addSuspension(suspension) {
+    if (!canDo(get().currentUser, "author_contract")) {
+      get().pushToast("error", "Your role can't suspend the contract.");
+      return;
+    }
+    const map = new Map(get().suspensionsByContract);
+    const arr = [...(map.get(suspension.contractId) ?? []), suspension];
+    map.set(suspension.contractId, arr);
+    set({ suspensionsByContract: map });
+    void persist(
+      get,
+      set,
+      async (ds) => ds.persistSuspension(suspension),
+      () => {
+        const m = new Map(get().suspensionsByContract);
+        m.set(suspension.contractId, (m.get(suspension.contractId) ?? []).filter((x) => x !== suspension));
+        set({ suspensionsByContract: m });
+      },
+      "Couldn't save suspension",
+    );
   },
 
   upsertSample(sample) {

@@ -505,3 +505,37 @@ export interface TestTemplate {
   testType: string;
   fields: { key: string; label: string }[];
 }
+
+// ---------------------------------------------------------------------------
+// Diary (Ch. 3) — brief 07
+// ---------------------------------------------------------------------------
+
+export interface DiaryWeather {
+  conditions: string;
+  tempHigh: number | null;
+  tempLow: number | null;
+  note: string;
+}
+
+export interface DiaryContractorWork {
+  contractor: string;
+  summary: string;
+}
+
+export interface DiaryDay {
+  contractId: string;
+  date: string; // ISO, one per day
+  weather: DiaryWeather;
+  controllingItem: string;
+  contractorWork: DiaryContractorWork[]; // shared to contractor only once signed
+  projectLog: string; // internal only — never visible to Contractor scope
+  signedBy: string | null;
+  signedAt: string | null;
+}
+
+export interface DiarySuspension {
+  contractId: string;
+  from: string;
+  to: string | null;
+  reason: string;
+}

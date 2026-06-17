@@ -39,6 +39,8 @@ import type {
   Test,
   TestField,
   TestTemplate,
+  DiaryDay,
+  DiarySuspension,
 } from "@/domain/types";
 import { makeRng, type Rng } from "./rng";
 import { buildPayItemMaterials } from "@/domain/grouping";
@@ -65,6 +67,7 @@ export interface World {
   samples: Sample[];
   tests: Test[];
   testTemplates: TestTemplate[];
+  suspensionsByContract: Map<string, DiarySuspension[]>;
 }
 
 // Test field templates keyed by material family (Ch. 11) — drives the Tests tab.
@@ -528,7 +531,82 @@ export function generateWorld(config: SeedConfig = DEFAULT_SEED_CONFIG): World {
 
   const { samples, tests } = generateSamplesAndTests(contracts, byContract, payItemsByContract);
 
-  return { contracts, items, payItemsByContract, samples, tests, testTemplates: TEST_TEMPLATES };
+  const suspensionsByContract = new Map<string, DiarySuspension[]>();
+  for (const c of contracts) suspensionsByContract.set(c.id, generateSuspensions(c.id));
+
+  return {
+    contracts,
+    items,
+    payItemsByContract,
+    samples,
+    tests,
+    testTemplates: TEST_TEMPLATES,
+    suspensionsByContract,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Diary (brief 07) — suspensions seeded; days generated on demand + overlaid
+// ---------------------------------------------------------------------------
+
+function generateSuspensions(contractId: string): DiarySuspension[] {
+  const rng = makeRng(`${MASTER_SEED}:susp:${contractId}`);
+  if (!rng.bool(0.3)) return [];
+  const fromDays = rng.int(120, 220);
+  const toDays = rng.int(40, fromDays - 20);
+  return [
+    {
+      contractId,
+      from: isoDate(Date.now() - fromDays * MS_DAY),
+      to: isoDate(Date.now() - toDays * MS_DAY),
+      reason: rng.pick(["Winter shutdown", "Utility relocation delay", "Right-of-way hold", "Weather suspension"]),
+    },
+  ];
+}
+
+const WEATHER = ["Clear", "Partly Cloudy", "Cloudy", "Rain", "Showers", "Snow", "Windy", "Fog"];
+const CONTROLLING = [
+  "HMA surface course",
+  "PCC pavement placement",
+  "Structure excavation",
+  "Reinforcement placement",
+  "Pavement marking",
+  "Aggregate base",
+  "Bridge deck pour",
+  "Guardrail installation",
+];
+
+/** Deterministic diary day for a (contract, date). Overlaid by saved deltas. */
+export function buildDiaryDay(contract: Contract, date: string): DiaryDay {
+  const rng = makeRng(`diary:${contract.id}:${date}`);
+  const epoch = new Date(date + "T00:00:00").getTime();
+  const isPast = epoch < Date.now() - MS_DAY;
+  const dow = new Date(date + "T00:00:00").getDay();
+  const isWeekend = dow === 0 || dow === 6;
+  const high = rng.int(45, 92);
+  const signed = isPast && !isWeekend && rng.bool(0.9);
+  return {
+    contractId: contract.id,
+    date,
+    weather: {
+      conditions: rng.pick(WEATHER),
+      tempHigh: high,
+      tempLow: high - rng.int(8, 25),
+      note: rng.bool(0.2) ? "Brief delay for weather." : "",
+    },
+    controllingItem: isWeekend ? "" : rng.pick(CONTROLLING),
+    contractorWork: isWeekend
+      ? []
+      : [
+          {
+            contractor: contract.summary.primeContractor,
+            summary: `${rng.pick(["Placed", "Formed", "Excavated", "Inspected", "Tested"])} ${rng.pick(CONTROLLING).toLowerCase()}; ${rng.int(4, 18)} crew on site.`,
+          },
+        ],
+    projectLog: isWeekend ? "" : rng.pick(["Verbal direction given on grade.", "Discussed schedule with contractor.", "Noted minor punchlist items.", ""]),
+    signedBy: signed ? rng.pick(STAFF_NAMES) : null,
+    signedAt: signed ? date : null,
+  };
 }
 
 // ---------------------------------------------------------------------------

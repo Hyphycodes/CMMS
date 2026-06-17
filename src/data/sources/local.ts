@@ -20,6 +20,8 @@ import type {
   EOIEntry,
   InventoryItem,
   PayItemMaterialStatus,
+  DiaryDay,
+  DiarySuspension,
 } from "@/domain/types";
 import { generateWorld, type SeedConfig } from "../seed/generate";
 
@@ -35,6 +37,8 @@ interface StoredDeltas {
   ledgers: Record<string, LedgerEntry[]>;
   eois: Record<string, EOIEntry[]>;
   payItemStatus: Record<string, PayItemMaterialStatusDelta>;
+  diaryDays: Record<string, DiaryDay>;
+  suspensions: Record<string, DiarySuspension[]>;
 }
 
 function emptyDeltas(): StoredDeltas {
@@ -48,6 +52,8 @@ function emptyDeltas(): StoredDeltas {
     ledgers: {},
     eois: {},
     payItemStatus: {},
+    diaryDays: {},
+    suspensions: {},
   };
 }
 
@@ -118,12 +124,19 @@ export function createLocalDataSource(): DataSource {
       world.samples = overlay(world.samples, deltas.samples, (s) => s.id);
       world.tests = overlay(world.tests, deltas.tests, (t) => t.id);
 
+      // Append persisted suspensions onto the seeded ones.
+      for (const [contractId, rows] of Object.entries(deltas.suspensions)) {
+        const existing = world.suspensionsByContract.get(contractId) ?? [];
+        world.suspensionsByContract.set(contractId, [...existing, ...rows]);
+      }
+
       return {
         world,
         eoiDeltas: deltas.eoiApproval,
         ledgerDeltas: deltas.ledgers,
         eoiRowDeltas: deltas.eois,
         payItemStatusDeltas: deltas.payItemStatus,
+        diaryDeltas: deltas.diaryDays,
       };
     },
 
@@ -211,6 +224,24 @@ export function createLocalDataSource(): DataSource {
       maybeFail();
       const d = readDeltas();
       d.payItemStatus[`${itemId}:${payItemNumber}`] = { status, note };
+      writeDeltas(d);
+    },
+
+    async persistDiaryDay(day: DiaryDay): Promise<void> {
+      await latency();
+      maybeFail();
+      const d = readDeltas();
+      d.diaryDays[`${day.contractId}:${day.date}`] = day;
+      writeDeltas(d);
+    },
+
+    async persistSuspension(suspension: DiarySuspension): Promise<void> {
+      await latency();
+      maybeFail();
+      const d = readDeltas();
+      const arr = d.suspensions[suspension.contractId] ?? [];
+      arr.push(suspension);
+      d.suspensions[suspension.contractId] = arr;
       writeDeltas(d);
     },
   };

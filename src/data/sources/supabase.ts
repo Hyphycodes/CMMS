@@ -26,6 +26,8 @@ import type {
   LedgerEntry,
   EOIEntry,
   PayItemMaterialStatus,
+  DiaryDay,
+  DiarySuspension,
 } from "@/domain/types";
 import type { SeedConfig, World } from "../seed/generate";
 import { TEST_TEMPLATES } from "../seed/generate";
@@ -81,6 +83,7 @@ export function createSupabaseDataSource(): DataSource {
         samples: [],
         tests: [],
         testTemplates: TEST_TEMPLATES,
+        suspensionsByContract: new Map(),
       };
       return {
         world,
@@ -88,6 +91,7 @@ export function createSupabaseDataSource(): DataSource {
         ledgerDeltas: {},
         eoiRowDeltas: {},
         payItemStatusDeltas: {},
+        diaryDeltas: {},
       };
     },
 
@@ -178,6 +182,30 @@ export function createSupabaseDataSource(): DataSource {
           { item_id: itemId, pay_item_number: payItemNumber, status, note },
           { onConflict: "item_id,pay_item_number" },
         );
+      if (error) throw error;
+    },
+
+    async persistDiaryDay(day: DiaryDay): Promise<void> {
+      const { error } = await db.from("diary_days").upsert(
+        {
+          contract_id: day.contractId,
+          date: day.date,
+          weather: day.weather,
+          controlling_item: day.controllingItem,
+          contractor_work: day.contractorWork,
+          project_log: day.projectLog,
+          signed_by: day.signedBy,
+          signed_at: day.signedAt,
+        },
+        { onConflict: "contract_id,date" },
+      );
+      if (error) throw error;
+    },
+
+    async persistSuspension(s: DiarySuspension): Promise<void> {
+      const { error } = await db
+        .from("diary_suspensions")
+        .insert({ contract_id: s.contractId, from_date: s.from, to_date: s.to, reason: s.reason });
       if (error) throw error;
     },
   };

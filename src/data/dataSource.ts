@@ -17,6 +17,8 @@ import type {
   EOIEntry,
   InventoryItem,
   PayItemMaterialStatus,
+  DiaryDay,
+  DiarySuspension,
 } from "@/domain/types";
 import type { World, SeedConfig } from "./seed/generate";
 
@@ -40,6 +42,8 @@ export interface LoadResult {
   eoiRowDeltas: Record<string, EOIEntry[]>;
   /** Pay Item Material Status overrides, keyed by `${itemId}:${payItemNumber}` */
   payItemStatusDeltas: Record<string, PayItemMaterialStatusDelta>;
+  /** Diary day edits/signs, keyed by `${contractId}:${date}` (brief 07) */
+  diaryDeltas: Record<string, DiaryDay>;
 }
 
 export interface InventoryStatusUpdate {
@@ -77,6 +81,10 @@ export interface DataSource {
     status: PayItemMaterialStatus,
     note: string,
   ): Promise<void>;
+
+  // Diary (brief 07).
+  persistDiaryDay(day: DiaryDay): Promise<void>;
+  persistSuspension(suspension: DiarySuspension): Promise<void>;
 }
 
 let cached: DataSource | null = null;
