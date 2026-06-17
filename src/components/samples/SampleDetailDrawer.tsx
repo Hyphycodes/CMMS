@@ -1,33 +1,56 @@
 /**
- * Sample detail (briefs 03–04, reworked per user request). One clean, scrollable
- * page — NOT tabbed — that shows every field grouped into clear sections
- * (Identification, Material, Source, Linkage, Dates, Review) plus the Tests
- * records inline (validation stays here). Approve / Reject are NOT here: sample
- * approval is right-click only, on the samples list (see SamplesPage).
+ * Sample detail — one clean, scrollable page.
+ * Flat section layout (no card boxes per group). Document upload at the bottom.
+ * Approve / Reject are right-click only on the samples list, never here.
  */
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@/store/store";
 import { MATERIALS } from "@/data/reference";
 import { SAMPLE_STATUSES, type Sample, type Test } from "@/domain/types";
-import { FieldGroup } from "@/components/ui/FieldGroup";
 import { Pill } from "@/components/ui/Pill";
 import { EditableRowTable, EditText, type EditableColumn } from "@/components/ui/EditableRowTable";
-import { CheckIcon, XIcon } from "@/components/ui/icons";
+import { CheckIcon, XIcon, FileIcon, PlusIcon } from "@/components/ui/icons";
 import { sampleTone } from "@/domain/status";
-import type { Field } from "@/lib/fields";
 
-// statuses an inspector/lab moves through (Approved/Rejected are set via the
-// right-click approval on the list, never here)
 const TESTING_STATUSES = SAMPLE_STATUSES.filter((s) => s !== "Approved" && s !== "Rejected");
+
+interface Attachment {
+  id: string;
+  name: string;
+  size: number;
+  mimeType: string;
+  addedAt: string;
+  url: string;
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function fmtDate(val: string | null | undefined) {
+  if (!val) return "";
+  const d = new Date(val + "T00:00:00");
+  return isNaN(d.getTime()) ? val : d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+}
+
+// ---------------------------------------------------------------------------
+// Main drawer
+// ---------------------------------------------------------------------------
 
 export function SampleDetailDrawer({ sampleId, onClose }: { sampleId: string; onClose: () => void }) {
   const sample = useStore((s) => s.samplesList.find((x) => x.id === sampleId));
   const testsList = useStore((s) => s.testsList);
+  const contractsById = useStore((s) => s.contractsById);
 
   const tests = useMemo(
     () => testsList.filter((t) => t.sampleId === sampleId).sort((a, b) => a.series - b.series),
     [testsList, sampleId],
   );
+
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -35,7 +58,30 @@ export function SampleDetailDrawer({ sampleId, onClose }: { sampleId: string; on
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  const addFiles = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const next: Attachment[] = Array.from(files).map((f) => ({
+      id: `att_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      name: f.name,
+      size: f.size,
+      mimeType: f.type,
+      addedAt: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+      url: URL.createObjectURL(f),
+    }));
+    setAttachments((prev) => [...prev, ...next]);
+  };
+
+  const removeAttachment = (id: string) => {
+    setAttachments((prev) => {
+      const att = prev.find((a) => a.id === id);
+      if (att) URL.revokeObjectURL(att.url);
+      return prev.filter((a) => a.id !== id);
+    });
+  };
+
   if (!sample) return null;
+
+  const contract = sample.contractId ? contractsById.get(sample.contractId) : null;
 
   return (
     <div className="fixed inset-0 z-30 flex justify-end" role="dialog" aria-modal="true">
@@ -69,16 +115,72 @@ export function SampleDetailDrawer({ sampleId, onClose }: { sampleId: string; on
           </button>
         </div>
 
-        {/* one scrolling page — every field, grouped */}
-        <div className="scroll-thin min-h-0 flex-1 overflow-y-auto px-6 py-5">
-          <div className="mx-auto max-w-3xl space-y-4">
-            <IdentificationGroup sample={sample} />
-            <MaterialGroup sample={sample} />
-            <SourceGroup sample={sample} />
-            <LinkageGroup sample={sample} />
-            <DatesGroup sample={sample} />
-            <ReviewGroup sample={sample} />
+        {/* one scrollable page */}
+        <div className="scroll-thin min-h-0 flex-1 overflow-y-auto px-6 py-6">
+          <div className="mx-auto max-w-3xl space-y-8">
+
+            {/* Identification */}
+            <Section title="Identification">
+              <StatusField sample={sample} />
+              <F label="Inspection Type" value={sample.inspectionType} />
+              <F label="Inspector" value={sample.inspector} />
+              <F label="Sample Date" value={fmtDate(sample.sampleDate)} />
+              <F label="Total Samples" value={sample.totalSamples} />
+            </Section>
+
+            {/* Material */}
+            <Section title="Material">
+              <F label="Material Code" value={sample.materialCode} mono />
+              <F label="Material Name" value={sample.materialName} />
+              <F label="Description 1" value={sample.desc1} />
+              <F label="Description 2" value={sample.desc2} />
+              <F label="Description 3" value={sample.desc3} />
+              <F label="Special ID" value={sample.specialId} />
+              <F label="Inspected Quantity" value={`${sample.inspectedQty} ${sample.materialUnit}`} />
+            </Section>
+
+            {/* Source */}
+            <Section title="Source">
+              <F label="Producer" value={`${sample.producerNumber} — ${sample.producerName}`} />
+              <F label="Supplier" value={`${sample.supplierNumber} — ${sample.supplierName}`} />
+              <F label="Sampled From" value={sample.sampledFrom} />
+              <F label="Spec & Year" value={sample.specYear} />
+              <F label="DSA / BABA" value={sample.dsaBaba ? "Yes" : "No"} />
+              <F label="Responsible Lab" value={sample.responsibleLab} />
+            </Section>
+
+            {/* Linkage */}
+            <Section title="Linkage">
+              <F label="Contract" value={contract?.number ?? ""} />
+              <F label="Pay Item" value={sample.payItemNumber ?? ""} mono />
+              <F label="Inventory" value={sample.inventoryItemId ? "Linked" : ""} />
+            </Section>
+
+            {/* Dates */}
+            <Section title="Dates">
+              <F label="Received" value={fmtDate(sample.receivedDate)} />
+              <F label="Testing Started" value={fmtDate(sample.startedDate)} />
+              <F label="Completed" value={fmtDate(sample.completedDate)} />
+            </Section>
+
+            {/* Review */}
+            <Section title="Review">
+              <F label="Approver" value={sample.approverName} />
+              <F label="Approved Date" value={fmtDate(sample.approvedDate)} />
+              <F label="Note" value={sample.note} span />
+            </Section>
+
+            {/* Tests */}
             <TestsSection sample={sample} tests={tests} />
+
+            {/* Documents */}
+            <DocumentsSection
+              attachments={attachments}
+              fileInputRef={fileInputRef}
+              onAdd={addFiles}
+              onRemove={removeAttachment}
+            />
+
           </div>
         </div>
       </div>
@@ -86,91 +188,74 @@ export function SampleDetailDrawer({ sampleId, onClose }: { sampleId: string; on
   );
 }
 
-function IdentificationGroup({ sample }: { sample: Sample }) {
+// ---------------------------------------------------------------------------
+// Flat section layout helpers
+// ---------------------------------------------------------------------------
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="mb-4 border-b border-line pb-1.5">
+        <span className="text-[11px] font-semibold uppercase tracking-widest text-ink-faint">{title}</span>
+      </div>
+      <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function F({
+  label,
+  value,
+  mono,
+  span,
+}: {
+  label: string;
+  value: string | number | null | undefined;
+  mono?: boolean;
+  span?: boolean;
+}) {
+  const display =
+    value !== null && value !== undefined && String(value).trim() !== ""
+      ? String(value)
+      : "—";
+  return (
+    <div className={span ? "col-span-full" : ""}>
+      <div className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">{label}</div>
+      <div className={["text-sm text-ink", mono ? "font-mono" : ""].filter(Boolean).join(" ")}>{display}</div>
+    </div>
+  );
+}
+
+function StatusField({ sample }: { sample: Sample }) {
   const canTest = useStore((s) => s.can("enter_tests"));
   const setSampleStatus = useStore((s) => s.setSampleStatus);
   const decided = sample.status === "Approved" || sample.status === "Rejected";
 
-  const fields: Field[] = [
-    { label: "Inspection Type", value: sample.inspectionType },
-    { label: "Inspector", value: sample.inspector },
-    { label: "Sample Date", value: sample.sampleDate, type: "date" },
-    { label: "Total Samples", value: sample.totalSamples, type: "number" },
-    { label: "Status", value: sample.status },
-  ];
-
   return (
-    <FieldGroup title="Identification" fields={fields} showEmpty collapsible={false}>
-      {canTest && !decided && (
-        <div className="mt-3 flex items-center gap-2">
-          <label className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Testing Status</label>
-          <select
-            value={sample.status}
-            onChange={(e) => setSampleStatus(sample.id, e.target.value as Sample["status"])}
-            className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm font-medium outline-none focus:border-accent"
-          >
-            {TESTING_STATUSES.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-        </div>
+    <div>
+      <div className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Status</div>
+      {canTest && !decided ? (
+        <select
+          value={sample.status}
+          onChange={(e) => setSampleStatus(sample.id, e.target.value as Sample["status"])}
+          className="rounded-md border border-line bg-surface px-2 py-1 text-sm font-medium outline-none focus:border-accent"
+        >
+          {TESTING_STATUSES.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+      ) : (
+        <div className="text-sm text-ink">{sample.status}</div>
       )}
-    </FieldGroup>
+    </div>
   );
 }
 
-function MaterialGroup({ sample }: { sample: Sample }) {
-  const fields: Field[] = [
-    { label: "Material Code", value: sample.materialCode, type: "mono" },
-    { label: "Material Name", value: sample.materialName },
-    { label: "Description 1", value: sample.desc1 },
-    { label: "Description 2", value: sample.desc2 },
-    { label: "Description 3", value: sample.desc3 },
-    { label: "Special ID", value: sample.specialId },
-    { label: "Inspected Quantity", value: `${sample.inspectedQty} ${sample.materialUnit}` },
-  ];
-  return <FieldGroup title="Material" fields={fields} showEmpty collapsible={false} />;
-}
-
-function SourceGroup({ sample }: { sample: Sample }) {
-  const fields: Field[] = [
-    { label: "Producer", value: `${sample.producerNumber} — ${sample.producerName}` },
-    { label: "Supplier", value: `${sample.supplierNumber} — ${sample.supplierName}` },
-    { label: "Sampled From", value: sample.sampledFrom },
-    { label: "Spec & Year", value: sample.specYear },
-    { label: "DSA/BABA", value: sample.dsaBaba, type: "bool" },
-    { label: "Responsible Lab", value: sample.responsibleLab },
-  ];
-  return <FieldGroup title="Source" fields={fields} showEmpty collapsible={false} />;
-}
-
-function LinkageGroup({ sample }: { sample: Sample }) {
-  const contractsById = useStore((s) => s.contractsById);
-  const fields: Field[] = [
-    { label: "Contract", value: sample.contractId ? (contractsById.get(sample.contractId)?.number ?? "—") : "" },
-    { label: "Pay Item", value: sample.payItemNumber ?? "", type: "mono" },
-    { label: "Inventory", value: sample.inventoryItemId ? "Linked" : "" },
-  ];
-  return <FieldGroup title="Linkage" fields={fields} showEmpty collapsible={false} />;
-}
-
-function DatesGroup({ sample }: { sample: Sample }) {
-  const fields: Field[] = [
-    { label: "Received Date", value: sample.receivedDate, type: "date" },
-    { label: "Started Date", value: sample.startedDate, type: "date" },
-    { label: "Completed Date", value: sample.completedDate, type: "date" },
-  ];
-  return <FieldGroup title="Dates" fields={fields} showEmpty collapsible={false} />;
-}
-
-function ReviewGroup({ sample }: { sample: Sample }) {
-  const fields: Field[] = [
-    { label: "Approver Name", value: sample.approverName },
-    { label: "Approved Date", value: sample.approvedDate, type: "date" },
-    { label: "Note", value: sample.note },
-  ];
-  return <FieldGroup title="Review" fields={fields} showEmpty collapsible={false} />;
-}
+// ---------------------------------------------------------------------------
+// Tests section
+// ---------------------------------------------------------------------------
 
 function TestsSection({ sample, tests }: { sample: Sample; tests: Test[] }) {
   const canTest = useStore((s) => s.can("enter_tests"));
@@ -209,10 +294,18 @@ function TestsSection({ sample, tests }: { sample: Sample; tests: Test[] }) {
   const columns: EditableColumn<Test>[] = [
     { key: "series", header: "Series", width: "70px", render: (t) => <span className="font-semibold tabular-nums">#{t.series}</span> },
     { key: "testType", header: "Test Type", width: "minmax(0,1.4fr)", render: (t) => <span className="text-ink">{t.testType}</span> },
-    { key: "testedBy", header: "Tested By", width: "minmax(0,1fr)",
-      render: (t) => <EditText value={t.testedBy} disabled={!canTest} onCommit={(v) => upsertTest({ ...t, testedBy: v })} /> },
-    { key: "testDate", header: "Test Date", width: "130px",
-      render: (t) => <EditText value={t.testDate ?? ""} disabled={!canTest} onCommit={(v) => upsertTest({ ...t, testDate: v })} /> },
+    {
+      key: "testedBy",
+      header: "Tested By",
+      width: "minmax(0,1fr)",
+      render: (t) => <EditText value={t.testedBy} disabled={!canTest} onCommit={(v) => upsertTest({ ...t, testedBy: v })} />,
+    },
+    {
+      key: "testDate",
+      header: "Test Date",
+      width: "130px",
+      render: (t) => <EditText value={t.testDate ?? ""} disabled={!canTest} onCommit={(v) => upsertTest({ ...t, testDate: v })} />,
+    },
     ...fieldDefs.map(
       (fd): EditableColumn<Test> => ({
         key: fd.key,
@@ -230,7 +323,10 @@ function TestsSection({ sample, tests }: { sample: Sample; tests: Test[] }) {
       width: "120px",
       render: (t) =>
         t.validated ? (
-          <span className="flex items-center gap-1 text-xs font-medium text-green-700" title={`${t.validatedBy} · ${t.validatedAt ?? ""}`}>
+          <span
+            className="flex items-center gap-1 text-xs font-medium text-green-700"
+            title={`${t.validatedBy} · ${t.validatedAt ?? ""}`}
+          >
             <CheckIcon className="text-sm" /> {t.validatedBy || "Validated"}
           </span>
         ) : (
@@ -247,9 +343,11 @@ function TestsSection({ sample, tests }: { sample: Sample; tests: Test[] }) {
   ];
 
   return (
-    <div className="rounded-card border border-line bg-surface">
-      <div className="border-b border-line px-4 py-2.5 text-sm font-semibold text-ink">Tests</div>
-      <div className="space-y-4 px-4 py-4">
+    <div>
+      <div className="mb-4 border-b border-line pb-1.5">
+        <span className="text-[11px] font-semibold uppercase tracking-widest text-ink-faint">Tests</span>
+      </div>
+      <div className="space-y-4">
         <EditableRowTable
           rows={tests}
           columns={columns}
@@ -261,7 +359,7 @@ function TestsSection({ sample, tests }: { sample: Sample; tests: Test[] }) {
           emptyMessage="No tests recorded yet."
         />
         <p className="text-xs text-ink-faint">
-          Add more than one series to the same sample. Validate is a separate, role-gated step.
+          Each series is a separate test run on the same sample. Validate is a separate, role-gated step.
         </p>
 
         {tests.length > 1 && fieldDefs.length > 0 && (
@@ -273,7 +371,9 @@ function TestsSection({ sample, tests }: { sample: Sample; tests: Test[] }) {
                   <tr className="bg-canvas text-left text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
                     <th className="px-3 py-2">Field</th>
                     {tests.map((t) => (
-                      <th key={t.id} className="px-3 py-2 text-right">Series #{t.series}</th>
+                      <th key={t.id} className="px-3 py-2 text-right">
+                        Series #{t.series}
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -297,6 +397,112 @@ function TestsSection({ sample, tests }: { sample: Sample; tests: Test[] }) {
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Documents section
+// ---------------------------------------------------------------------------
+
+function DocumentsSection({
+  attachments,
+  fileInputRef,
+  onAdd,
+  onRemove,
+}: {
+  attachments: Attachment[];
+  fileInputRef: React.RefObject<HTMLInputElement>;
+  onAdd: (files: FileList | null) => void;
+  onRemove: (id: string) => void;
+}) {
+  const [dragging, setDragging] = useState(false);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    onAdd(e.dataTransfer.files);
+  };
+
+  return (
+    <div className="pb-8">
+      <div className="mb-4 border-b border-line pb-1.5">
+        <span className="text-[11px] font-semibold uppercase tracking-widest text-ink-faint">Documents</span>
+      </div>
+
+      {attachments.length > 0 && (
+        <div className="mb-4 space-y-2">
+          {attachments.map((att) => (
+            <div key={att.id} className="flex items-center gap-3 rounded-lg border border-line bg-canvas px-3 py-2.5">
+              <FileIcon className="shrink-0 text-xl text-ink-faint" />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium text-ink">{att.name}</div>
+                <div className="text-xs text-ink-faint">
+                  {formatBytes(att.size)}
+                  {att.mimeType ? ` · ${att.mimeType}` : ""}
+                  {" · "}Added {att.addedAt}
+                </div>
+              </div>
+              <a
+                href={att.url}
+                download={att.name}
+                className="shrink-0 text-xs font-medium text-accent hover:underline"
+              >
+                Download
+              </a>
+              <button
+                onClick={() => onRemove(att.id)}
+                title="Remove"
+                className="shrink-0 rounded p-0.5 text-ink-faint transition hover:text-red-600"
+              >
+                <XIcon className="text-base" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          onAdd(e.target.files);
+          e.target.value = "";
+        }}
+      />
+
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={handleDrop}
+        onClick={() => fileInputRef.current?.click()}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
+        className={[
+          "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 text-center transition select-none",
+          dragging
+            ? "border-accent bg-accent/5"
+            : "border-line hover:border-accent/60 hover:bg-canvas",
+        ].join(" ")}
+      >
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-canvas text-ink-faint">
+          <PlusIcon className="text-xl" />
+        </div>
+        <p className="text-sm font-medium text-ink">Add file</p>
+        <p className="text-xs text-ink-faint">
+          Click to browse or drag and drop — any file type, any size
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Print label
+// ---------------------------------------------------------------------------
 
 function printLabel(sample: Sample) {
   const w = window.open("", "_blank", "width=420,height=320");
