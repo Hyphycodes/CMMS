@@ -107,6 +107,25 @@ export interface PayItem {
   unitPrice: number;
   awardedQuantity: number;
   placedQuantity: number;
+  fundKey?: string;
+  final?: boolean; // "Final a pay item" (brief 08)
+}
+
+/** Quantity Book placement entry (Ch. 4) — brief 08. */
+export interface PlacementEntry {
+  id: string;
+  payItemNumber: string;
+  contractId: string;
+  date: string;
+  fundKey: string;
+  type: "Placed" | "Adjustment";
+  quantity: number;
+  price: number;
+  location: string;
+  contractor: string;
+  posted: boolean;
+  payEstimateId: string | null;
+  creator: string;
 }
 
 // ---------------------------------------------------------------------------

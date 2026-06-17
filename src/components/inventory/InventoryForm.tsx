@@ -16,11 +16,15 @@ const LOCATION_TYPES = ["Jobsite", "Manufacturer's Plant", "Stockpile", "Storage
 export function InventoryForm({
   contractId,
   item,
+  initialMaterialCode,
+  initialPayItem,
   onClose,
   onSaved,
 }: {
   contractId: string;
   item?: InventoryItem;
+  initialMaterialCode?: string;
+  initialPayItem?: string;
   onClose: () => void;
   onSaved: (id: string) => void;
 }) {
@@ -39,29 +43,30 @@ export function InventoryForm({
     return max + 1;
   }, [items]);
 
-  const [d, setD] = useState<InventoryItem>(
-    () =>
-      item ?? {
-        id: "",
-        inventoryId: "",
-        contractId,
-        contractNumber: contract?.number ?? "",
-        materialCode: "",
-        materialName: "",
-        materialUnit: "",
-        producerNumber: "",
-        producerName: "",
-        supplierNumber: "",
-        supplierName: "",
-        status: "Needs Attention",
-        note: "",
-        payItemNumbers: [],
-        readyAt: null,
-        locationType: "Jobsite",
-        effectiveDate: null,
-        expirationDate: null,
-      },
-  );
+  const [d, setD] = useState<InventoryItem>(() => {
+    if (item) return item;
+    const m = initialMaterialCode ? MATERIALS.find((x) => x.code === initialMaterialCode) : undefined;
+    return {
+      id: "",
+      inventoryId: "",
+      contractId,
+      contractNumber: contract?.number ?? "",
+      materialCode: m?.code ?? "",
+      materialName: m?.name ?? "",
+      materialUnit: m?.unit ?? "",
+      producerNumber: "",
+      producerName: "",
+      supplierNumber: "",
+      supplierName: "",
+      status: "Needs Attention",
+      note: "",
+      payItemNumbers: initialPayItem ? [initialPayItem] : [],
+      readyAt: null,
+      locationType: "Jobsite",
+      effectiveDate: null,
+      expirationDate: null,
+    };
+  });
   const patch = (p: Partial<InventoryItem>) => setD((cur) => ({ ...cur, ...p }));
 
   const material = MATERIALS.find((m) => m.code === d.materialCode);

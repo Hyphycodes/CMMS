@@ -28,6 +28,7 @@ import type {
   PayItemMaterialStatus,
   DiaryDay,
   DiarySuspension,
+  PlacementEntry,
 } from "@/domain/types";
 import type { SeedConfig, World } from "../seed/generate";
 import { TEST_TEMPLATES } from "../seed/generate";
@@ -84,6 +85,7 @@ export function createSupabaseDataSource(): DataSource {
         tests: [],
         testTemplates: TEST_TEMPLATES,
         suspensionsByContract: new Map(),
+        placements: [],
       };
       return {
         world,
@@ -92,6 +94,8 @@ export function createSupabaseDataSource(): DataSource {
         eoiRowDeltas: {},
         payItemStatusDeltas: {},
         diaryDeltas: {},
+        placementDeltas: {},
+        payItemDeltas: {},
       };
     },
 
@@ -206,6 +210,46 @@ export function createSupabaseDataSource(): DataSource {
       const { error } = await db
         .from("diary_suspensions")
         .insert({ contract_id: s.contractId, from_date: s.from, to_date: s.to, reason: s.reason });
+      if (error) throw error;
+    },
+
+    async persistPlacement(p: PlacementEntry): Promise<void> {
+      const { error } = await db.from("placements").upsert(
+        {
+          id: p.id,
+          pay_item_number: p.payItemNumber,
+          contract_id: p.contractId,
+          date: p.date,
+          fund_key: p.fundKey,
+          type: p.type,
+          quantity: p.quantity,
+          price: p.price,
+          location: p.location,
+          contractor: p.contractor,
+          posted: p.posted,
+          pay_estimate_id: p.payEstimateId,
+          creator: p.creator,
+        },
+        { onConflict: "id" },
+      );
+      if (error) throw error;
+    },
+
+    async persistPayItem(contractId: string, p: PayItem): Promise<void> {
+      const { error } = await db.from("pay_items").upsert(
+        {
+          contract_id: contractId,
+          number: p.number,
+          description: p.description,
+          unit: p.unit,
+          unit_price: p.unitPrice,
+          awarded_quantity: p.awardedQuantity,
+          placed_quantity: p.placedQuantity,
+          fund_key: p.fundKey ?? null,
+          final: p.final ?? false,
+        },
+        { onConflict: "contract_id,number" },
+      );
       if (error) throw error;
     },
   };

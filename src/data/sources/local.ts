@@ -22,6 +22,8 @@ import type {
   PayItemMaterialStatus,
   DiaryDay,
   DiarySuspension,
+  PlacementEntry,
+  PayItem,
 } from "@/domain/types";
 import { generateWorld, type SeedConfig } from "../seed/generate";
 
@@ -39,6 +41,8 @@ interface StoredDeltas {
   payItemStatus: Record<string, PayItemMaterialStatusDelta>;
   diaryDays: Record<string, DiaryDay>;
   suspensions: Record<string, DiarySuspension[]>;
+  placements: Record<string, PlacementEntry>;
+  payItems: Record<string, PayItem>;
 }
 
 function emptyDeltas(): StoredDeltas {
@@ -54,6 +58,8 @@ function emptyDeltas(): StoredDeltas {
     payItemStatus: {},
     diaryDays: {},
     suspensions: {},
+    placements: {},
+    payItems: {},
   };
 }
 
@@ -130,6 +136,18 @@ export function createLocalDataSource(): DataSource {
         world.suspensionsByContract.set(contractId, [...existing, ...rows]);
       }
 
+      // Overlay placements (upsert by id) and pay item edits (final / authorizations).
+      world.placements = overlay(world.placements, deltas.placements, (p) => p.id);
+      for (const [key, pi] of Object.entries(deltas.payItems)) {
+        const contractId = key.slice(0, key.lastIndexOf(":"));
+        const list = world.payItemsByContract.get(contractId);
+        if (list) {
+          const idx = list.findIndex((p) => p.number === pi.number);
+          if (idx >= 0) list[idx] = pi;
+          else list.push(pi);
+        }
+      }
+
       return {
         world,
         eoiDeltas: deltas.eoiApproval,
@@ -137,6 +155,8 @@ export function createLocalDataSource(): DataSource {
         eoiRowDeltas: deltas.eois,
         payItemStatusDeltas: deltas.payItemStatus,
         diaryDeltas: deltas.diaryDays,
+        placementDeltas: deltas.placements,
+        payItemDeltas: deltas.payItems,
       };
     },
 
@@ -242,6 +262,22 @@ export function createLocalDataSource(): DataSource {
       const arr = d.suspensions[suspension.contractId] ?? [];
       arr.push(suspension);
       d.suspensions[suspension.contractId] = arr;
+      writeDeltas(d);
+    },
+
+    async persistPlacement(placement: PlacementEntry): Promise<void> {
+      await latency();
+      maybeFail();
+      const d = readDeltas();
+      d.placements[placement.id] = placement;
+      writeDeltas(d);
+    },
+
+    async persistPayItem(contractId: string, payItem: PayItem): Promise<void> {
+      await latency();
+      maybeFail();
+      const d = readDeltas();
+      d.payItems[`${contractId}:${payItem.number}`] = payItem;
       writeDeltas(d);
     },
   };

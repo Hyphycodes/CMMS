@@ -262,9 +262,13 @@ export function InventoryPage() {
       {params.get("new") === "1" && contractId && (
         <InventoryForm
           contractId={contractId}
+          initialMaterialCode={params.get("material") ?? undefined}
+          initialPayItem={params.get("payItem") ?? undefined}
           onClose={() => {
             const next = new URLSearchParams(params);
             next.delete("new");
+            next.delete("material");
+            next.delete("payItem");
             setParams(next, { replace: true });
           }}
           onSaved={(id) => {

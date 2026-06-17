@@ -24,6 +24,7 @@ import type {
   ProjectDocumentRow,
   DiaryDay,
   DiarySuspension,
+  PlacementEntry,
 } from "@/domain/types";
 import { getDataSource } from "@/data/dataSource";
 import { DEFAULT_SEED_CONFIG, buildOverlaidDetail, buildDiaryDay } from "@/data/seed/generate";
@@ -57,6 +58,9 @@ interface State {
   diaryDeltas: Record<string, DiaryDay>;
   suspensionsByContract: Map<string, DiarySuspension[]>;
 
+  // quantity book (brief 08)
+  placementsList: PlacementEntry[];
+
   // samples + tests (briefs 03–04)
   samplesList: Sample[];
   testsList: Test[];
@@ -88,6 +92,8 @@ interface State {
   diaryDay(contractId: string, date: string): DiaryDay | undefined;
   diaryRange(contractId: string, from: string, to: string): DiaryDay[];
   suspensions(contractId: string): DiarySuspension[];
+  placementsForContract(contractId: string): PlacementEntry[];
+  placementsForPayItem(contractId: string, payItemNumber: string): PlacementEntry[];
 
   // mutations (optimistic)
   setInventoryStatus(ids: string[], status: InventoryStatus, opts?: { note?: string }): void;
@@ -108,6 +114,12 @@ interface State {
   saveDiaryDay(day: DiaryDay): void;
   signDiaryDay(contractId: string, date: string): void;
   addSuspension(suspension: DiarySuspension): void;
+
+  // quantity book (brief 08)
+  savePlacement(placement: PlacementEntry): void;
+  deletePlacement(id: string): void;
+  updatePayItem(contractId: string, payItem: PayItem): void;
+  finalizePayItem(contractId: string, payItemNumber: string, final: boolean): void;
 
   // samples + tests (briefs 03–04)
   upsertSample(sample: Sample): void;
@@ -138,6 +150,8 @@ export const useStore = create<State>((set, get) => ({
 
   diaryDeltas: {},
   suspensionsByContract: new Map(),
+
+  placementsList: [],
 
   samplesList: [],
   testsList: [],
@@ -179,6 +193,7 @@ export const useStore = create<State>((set, get) => ({
         payItemStatusDeltas,
         diaryDeltas,
         suspensionsByContract: world.suspensionsByContract,
+        placementsList: world.placements,
         samplesList: world.samples,
         testsList: world.tests,
         testTemplates: world.testTemplates,
@@ -275,6 +290,9 @@ export const useStore = create<State>((set, get) => ({
     return out;
   },
   suspensions: (contractId) => get().suspensionsByContract.get(contractId) ?? [],
+  placementsForContract: (contractId) => get().placementsList.filter((p) => p.contractId === contractId),
+  placementsForPayItem: (contractId, payItemNumber) =>
+    get().placementsList.filter((p) => p.contractId === contractId && p.payItemNumber === payItemNumber),
 
   setInventoryStatus(ids, status, opts) {
     if (ids.length === 0) return;
@@ -492,6 +510,75 @@ export const useStore = create<State>((set, get) => ({
       },
       "Couldn't save suspension",
     );
+  },
+
+  savePlacement(placement) {
+    if (!canDo(get().currentUser, "author_contract")) {
+      get().pushToast("error", "Your role can't edit placements.");
+      return;
+    }
+    const list = get().placementsList;
+    const idx = list.findIndex((p) => p.id === placement.id);
+    const prev = idx >= 0 ? list[idx] : null;
+    set({ placementsList: idx >= 0 ? list.map((p) => (p.id === placement.id ? placement : p)) : [...list, placement] });
+    void persist(
+      get,
+      set,
+      async (ds) => ds.persistPlacement(placement),
+      () => {
+        const cur = get().placementsList;
+        set({ placementsList: prev ? cur.map((p) => (p.id === placement.id ? prev : p)) : cur.filter((p) => p.id !== placement.id) });
+      },
+      "Couldn't save placement",
+    );
+  },
+
+  deletePlacement(id) {
+    if (!canDo(get().currentUser, "author_contract")) {
+      get().pushToast("error", "Your role can't delete placements.");
+      return;
+    }
+    const list = get().placementsList;
+    const prev = list.find((p) => p.id === id);
+    if (!prev) return;
+    set({ placementsList: list.filter((p) => p.id !== id) });
+    void persist(
+      get,
+      set,
+      async (ds) => ds.persistPlacement({ ...prev, quantity: 0, type: "Adjustment", posted: false }),
+      () => set({ placementsList: [...get().placementsList, prev] }),
+      "Couldn't delete placement",
+    );
+  },
+
+  updatePayItem(contractId, payItem) {
+    const map = new Map(get().payItemsByContract);
+    const prev = (map.get(contractId) ?? []).slice();
+    const list = (map.get(contractId) ?? []).map((p) => (p.number === payItem.number ? payItem : p));
+    map.set(contractId, list);
+    set({ payItemsByContract: map });
+    void persist(
+      get,
+      set,
+      async (ds) => ds.persistPayItem(contractId, payItem),
+      () => {
+        const m = new Map(get().payItemsByContract);
+        m.set(contractId, prev);
+        set({ payItemsByContract: m });
+      },
+      "Couldn't save pay item",
+    );
+  },
+
+  finalizePayItem(contractId, payItemNumber, final) {
+    if (!canDo(get().currentUser, "author_contract")) {
+      get().pushToast("error", "Your role can't finalize pay items.");
+      return;
+    }
+    const pi = (get().payItemsByContract.get(contractId) ?? []).find((p) => p.number === payItemNumber);
+    if (!pi) return;
+    get().updatePayItem(contractId, { ...pi, final });
+    get().pushToast("success", final ? `Pay item ${payItemNumber} finaled` : `Pay item ${payItemNumber} reopened`);
   },
 
   upsertSample(sample) {

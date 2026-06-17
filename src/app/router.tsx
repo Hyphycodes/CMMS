@@ -6,6 +6,7 @@ import { ContractSummaryPage } from "@/pages/ContractSummaryPage";
 import { InventoryPage } from "@/pages/InventoryPage";
 import { SamplesPage } from "@/pages/SamplesPage";
 import { DiaryPage } from "@/pages/DiaryPage";
+import { QuantityBookPage } from "@/pages/QuantityBookPage";
 import { StubPage } from "@/pages/StubPage";
 
 export const router = createBrowserRouter([
@@ -22,8 +23,8 @@ export const router = createBrowserRouter([
       { path: "contract/:contractId/inventory", element: <InventoryPage /> },
       { path: "contract/:contractId/inventory/:itemId", element: <InventoryPage /> },
       { path: "contract/:contractId/diary", element: <DiaryPage /> },
-      // Replaced by real modules in briefs 08–10.
-      { path: "contract/:contractId/quantity-book", element: <StubPage node="Quantity Book" /> },
+      { path: "contract/:contractId/quantity-book", element: <QuantityBookPage /> },
+      // Replaced by real modules in briefs 09–10.
       { path: "contract/:contractId/pay-estimate", element: <StubPage node="Pay Estimate" /> },
       { path: "contract/:contractId/authorizations", element: <StubPage node="Authorizations" /> },
     ],

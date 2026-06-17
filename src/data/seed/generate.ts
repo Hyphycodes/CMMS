@@ -41,6 +41,7 @@ import type {
   TestTemplate,
   DiaryDay,
   DiarySuspension,
+  PlacementEntry,
 } from "@/domain/types";
 import { makeRng, type Rng } from "./rng";
 import { buildPayItemMaterials } from "@/domain/grouping";
@@ -68,7 +69,10 @@ export interface World {
   tests: Test[];
   testTemplates: TestTemplate[];
   suspensionsByContract: Map<string, DiarySuspension[]>;
+  placements: PlacementEntry[];
 }
+
+const FUND_KEYS = ["FED-STP", "STATE-01", "LOCAL-A", "FED-NHPP", "STATE-BR"];
 
 // Test field templates keyed by material family (Ch. 11) — drives the Tests tab.
 export const TEST_TEMPLATES: TestTemplate[] = [
@@ -436,8 +440,43 @@ function generatePayItems(_contract: Contract, rng: Rng): PayItem[] {
       unitPrice: rng.float(2, 850),
       awardedQuantity: awarded,
       placedQuantity: Math.round(awarded * rng.float(0.15, 1.0)),
+      fundKey: rng.pick(FUND_KEYS),
+      final: false,
     };
   });
+}
+
+function generatePlacements(contracts: Contract[], payItemsByContract: Map<string, PayItem[]>): PlacementEntry[] {
+  const out: PlacementEntry[] = [];
+  let seq = 1;
+  for (const c of contracts) {
+    const rng = makeRng(`${MASTER_SEED}:placements:${c.id}`);
+    for (const pi of payItemsByContract.get(c.id) ?? []) {
+      const n = rng.int(1, 4);
+      let remaining = pi.placedQuantity;
+      for (let i = 0; i < n; i++) {
+        const last = i === n - 1;
+        const qty = last ? remaining : Math.round((remaining / (n - i)) * rng.float(0.5, 1.3));
+        remaining = Math.max(0, remaining - qty);
+        out.push({
+          id: `plc_${seq++}`,
+          payItemNumber: pi.number,
+          contractId: c.id,
+          date: isoDate(Date.now() - rng.int(10, 300) * MS_DAY),
+          fundKey: pi.fundKey ?? rng.pick(FUND_KEYS),
+          type: rng.weighted<PlacementEntry["type"]>([["Placed", 8], ["Adjustment", 2]]),
+          quantity: qty,
+          price: pi.unitPrice,
+          location: rng.pick(["Sta 10+00", "Sta 24+50", "NB Lane", "SB Lane", "Ramp A", "Bridge Deck"]),
+          contractor: c.summary.primeContractor,
+          posted: rng.bool(0.6),
+          payEstimateId: null,
+          creator: rng.pick(STAFF_NAMES),
+        });
+      }
+    }
+  }
+  return out;
 }
 
 /** Build the full world deterministically. */
@@ -542,6 +581,7 @@ export function generateWorld(config: SeedConfig = DEFAULT_SEED_CONFIG): World {
     tests,
     testTemplates: TEST_TEMPLATES,
     suspensionsByContract,
+    placements: generatePlacements(contracts, payItemsByContract),
   };
 }
 

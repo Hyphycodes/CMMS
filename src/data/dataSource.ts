@@ -19,6 +19,8 @@ import type {
   PayItemMaterialStatus,
   DiaryDay,
   DiarySuspension,
+  PlacementEntry,
+  PayItem,
 } from "@/domain/types";
 import type { World, SeedConfig } from "./seed/generate";
 
@@ -44,6 +46,10 @@ export interface LoadResult {
   payItemStatusDeltas: Record<string, PayItemMaterialStatusDelta>;
   /** Diary day edits/signs, keyed by `${contractId}:${date}` (brief 07) */
   diaryDeltas: Record<string, DiaryDay>;
+  /** Placement edits, keyed by placement id (brief 08) */
+  placementDeltas: Record<string, PlacementEntry>;
+  /** Pay item edits (final flag, authorization propagation), keyed `${contractId}:${number}` */
+  payItemDeltas: Record<string, PayItem>;
 }
 
 export interface InventoryStatusUpdate {
@@ -85,6 +91,10 @@ export interface DataSource {
   // Diary (brief 07).
   persistDiaryDay(day: DiaryDay): Promise<void>;
   persistSuspension(suspension: DiarySuspension): Promise<void>;
+
+  // Quantity Book + Authorizations (briefs 08 + 10).
+  persistPlacement(placement: PlacementEntry): Promise<void>;
+  persistPayItem(contractId: string, payItem: PayItem): Promise<void>;
 }
 
 let cached: DataSource | null = null;
