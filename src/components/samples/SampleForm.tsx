@@ -14,7 +14,14 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 export function SampleForm({ onClose, onSaved }: { onClose: () => void; onSaved: (id: string) => void }) {
   const currentUser = useStore((s) => s.currentUser);
-  const visibleContracts = useStore((s) => s.visibleContracts());
+  // Subscribe to stable state and derive — calling s.visibleContracts() in the
+  // selector returns a new array each render and loops useSyncExternalStore.
+  const allContracts = useStore((s) => s.contracts);
+  const visibleIds = useStore((s) => s.visibleIds);
+  const visibleContracts = useMemo(
+    () => allContracts.filter((c) => visibleIds.has(c.id)),
+    [allContracts, visibleIds],
+  );
   const payItemsByContract = useStore((s) => s.payItemsByContract);
   const items = useStore((s) => s.items);
   const samplesList = useStore((s) => s.samplesList);
