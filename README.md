@@ -10,6 +10,13 @@ The two screens that hurt most, shipped first:
 - **My Work Tasks** — a cross-contract approval inbox of everything *Ready for Review*,
   oldest first, with bulk approve, a one-shot bulk note, and duplicate-collapse.
 
+…then the rest of the workflow, on the same spine (briefs 01–13): **roles & scoped,
+role-aware landing** · **Samples + Tests** · writable **Inventory** (ledger / EOI / create) ·
+**Contract** Insurance / Documents / Subcontracting / Final Review · **Diary** ·
+**Quantity Book** · **Pay Estimate** · **Authorizations** · **Materials** admin · a real
+Supabase backend with **Auth + RLS** · and a performance / accessibility pass. Read
+[CONVENTIONS.md](CONVENTIONS.md) before adding a module.
+
 ## Run it
 
 ```bash
@@ -49,9 +56,21 @@ implementations ship:
 
 - `sources/local.ts` — default, in-browser deterministic seed + localStorage deltas.
 - `sources/supabase.ts` — set `VITE_DATA_SOURCE=supabase` (+ `VITE_SUPABASE_URL` /
-  `VITE_SUPABASE_ANON_KEY`). Apply `supabase/migrations/0001_init.sql`, then
-  `npm run seed:supabase`.
+  `VITE_SUPABASE_ANON_KEY`).
 
+To wire the backend, apply the migrations in order, then seed:
+
+```bash
+# in the Supabase SQL editor or CLI, apply in order:
+#   supabase/migrations/0001_init.sql     contracts, pay_items, inventory_items, eoi_reviews
+#   supabase/migrations/0002_modules.sql  samples/tests/ledger/eoi/placements/estimates/auth/diary/mix/docs (+ enums, indexes)
+#   supabase/migrations/0003_auth_rls.sql users/roles/districts + RLS for the role matrix
+npm run seed:supabase                 # push the deterministic world to the DB
+npm run import -- contracts.csv       # OR: dry-run import real data (add --commit to write)
+```
+
+Env vars (`.env.local`): `VITE_DATA_SOURCE`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+(client) and `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (server-only, for the scripts).
 A real CMMS CSV export or API becomes a third implementation of the same interface —
 no UI changes.
 
