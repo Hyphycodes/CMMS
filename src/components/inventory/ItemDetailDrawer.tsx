@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useStore } from "@/store/store";
-import { buildDetail } from "@/data/seed/generate";
 import {
   INVENTORY_STATUSES,
   EOI_APPROVALS,
@@ -8,8 +7,8 @@ import {
   type InventoryDetail,
 } from "@/domain/types";
 import { Pill } from "@/components/ui/Pill";
+import { DetailDrawer } from "@/components/ui/DetailDrawer";
 import { inventoryTone, eoiTone, payItemTone, groupTone } from "@/domain/status";
-import { XIcon } from "@/components/ui/icons";
 import { formatDate, formatQty, formatNumber } from "@/lib/format";
 
 const TABS = ["Details", "Quantity Ledger", "Evidence of Inspection", "Pay Item Materials"] as const;
@@ -17,101 +16,97 @@ type Tab = (typeof TABS)[number];
 
 export function ItemDetailDrawer({ itemId, onClose }: { itemId: string; onClose: () => void }) {
   const item = useStore((s) => s.items.find((i) => i.id === itemId));
-  const payItems = useStore((s) => (item ? s.payItemsFor(item.contractId) : []));
-  const eoiDeltas = useStore((s) => s.eoiDeltas);
+  // store.detail() overlays persisted ledger / EOI / status deltas (brief 05).
+  const detail = useStore((s) => s.detail(itemId));
   const setInventoryStatus = useStore((s) => s.setInventoryStatus);
   const [tab, setTab] = useState<Tab>("Details");
 
-  const detail = useMemo<InventoryDetail | undefined>(() => {
-    if (!item) return undefined;
-    const d = buildDetail(item, payItems);
-    d.eoi = d.eoi.map((row) => {
-      const delta = eoiDeltas[`${itemId}:${row.id}`];
-      return delta ? { ...row, approval: delta.approval, note: delta.note } : row;
-    });
-    return d;
-  }, [item, payItems, eoiDeltas, itemId]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   if (!item || !detail) return null;
 
+  const tabs = TABS.map((t) => ({
+    id: t,
+    label: t,
+    count:
+      t === "Quantity Ledger"
+        ? detail.ledger.length
+        : t === "Evidence of Inspection"
+          ? detail.eoi.length
+          : t === "Pay Item Materials"
+            ? detail.payItemMaterials.length
+            : 0,
+  }));
+
   return (
-    <div className="fixed inset-0 z-30 flex justify-end" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-      <div className="relative flex h-full w-[760px] max-w-[94vw] flex-col bg-surface shadow-2xl">
-        {/* header */}
-        <div className="flex items-start gap-3 border-b border-line px-5 py-4">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-sm text-ink-faint">Inventory {item.inventoryId}</span>
-              <Pill tone={inventoryTone(item.status)}>{item.status}</Pill>
-            </div>
-            <h2 className="mt-1 truncate text-lg font-semibold text-ink">
-              <span className="font-mono">{item.materialCode}</span>
-              <span className="mx-1.5 text-ink-faint">—</span>
-              {item.materialName}
-            </h2>
-            <p className="text-xs text-ink-soft">
-              Contract {item.contractNumber} · {item.producerName}
-            </p>
-          </div>
-          <select
-            value={item.status}
-            onChange={(e) => setInventoryStatus([item.id], e.target.value as (typeof INVENTORY_STATUSES)[number])}
-            className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm font-medium outline-none focus:border-accent"
-          >
-            {INVENTORY_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-ink-faint hover:bg-canvas">
-            <XIcon className="text-xl" />
-          </button>
-        </div>
+    <DetailDrawer<Tab>
+      eyebrow={
+        <>
+          <span className="font-mono text-sm text-ink-faint">Inventory {item.inventoryId}</span>
+          <Pill tone={inventoryTone(item.status)}>{item.status}</Pill>
+        </>
+      }
+      title={
+        <>
+          <span className="font-mono">{item.materialCode}</span>
+          <span className="mx-1.5 text-ink-faint">—</span>
+          {item.materialName}
+        </>
+      }
+      subtitle={`Contract ${item.contractNumber} · ${item.producerName}`}
+      actions={
+        <StatusControl itemId={item.id} status={item.status} detail={detail} onChange={setInventoryStatus} />
+      }
+      tabs={tabs}
+      activeTab={tab}
+      onTabChange={setTab}
+      onClose={onClose}
+    >
+      {tab === "Details" && <DetailsTab detail={detail} />}
+      {tab === "Quantity Ledger" && <LedgerTab detail={detail} />}
+      {tab === "Evidence of Inspection" && <EOITab detail={detail} itemId={itemId} />}
+      {tab === "Pay Item Materials" && <PayItemTab detail={detail} />}
+    </DetailDrawer>
+  );
+}
 
-        {/* tabs */}
-        <div className="flex gap-1 border-b border-line px-3">
-          {TABS.map((t) => {
-            const count =
-              t === "Quantity Ledger"
-                ? detail.ledger.length
-                : t === "Evidence of Inspection"
-                  ? detail.eoi.length
-                  : t === "Pay Item Materials"
-                    ? detail.payItemMaterials.length
-                    : 0;
-            return (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={[
-                  "relative px-3 py-2.5 text-sm font-medium transition",
-                  tab === t ? "text-accent" : "text-ink-soft hover:text-ink",
-                ].join(" ")}
-              >
-                {t}
-                {count > 0 && <span className="ml-1.5 text-xs text-ink-faint">{count}</span>}
-                {tab === t && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded bg-accent" />}
-              </button>
-            );
-          })}
-        </div>
+// --- Status control (enforces Review Complete only when all EOI approved) ---
 
-        {/* body */}
-        <div className="scroll-thin min-h-0 flex-1 overflow-y-auto px-5 py-4">
-          {tab === "Details" && <DetailsTab detail={detail} />}
-          {tab === "Quantity Ledger" && <LedgerTab detail={detail} />}
-          {tab === "Evidence of Inspection" && <EOITab detail={detail} itemId={itemId} />}
-          {tab === "Pay Item Materials" && <PayItemTab detail={detail} />}
-        </div>
-      </div>
+function StatusControl({
+  itemId,
+  status,
+  detail,
+  onChange,
+}: {
+  itemId: string;
+  status: InventoryDetail["status"];
+  detail: InventoryDetail;
+  onChange: (ids: string[], status: InventoryDetail["status"]) => void;
+}) {
+  const pushToast = useStore((s) => s.pushToast);
+  const unresolved = detail.eoi.filter((r) => r.approval === "Unset").length;
+  const blockComplete = unresolved > 0;
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <select
+        value={status}
+        onChange={(e) => {
+          const next = e.target.value as InventoryDetail["status"];
+          if (next === "Review Complete" && blockComplete) {
+            pushToast("error", `${unresolved} EOI row${unresolved === 1 ? "" : "s"} still need approval before Review Complete.`);
+            return;
+          }
+          onChange([itemId], next);
+        }}
+        className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm font-medium outline-none focus:border-accent"
+      >
+        {INVENTORY_STATUSES.map((s) => (
+          <option key={s} value={s} disabled={s === "Review Complete" && blockComplete}>
+            {s}
+          </option>
+        ))}
+      </select>
+      {blockComplete && (
+        <span className="text-[10px] text-amber-700">{unresolved} EOI unreviewed</span>
+      )}
     </div>
   );
 }

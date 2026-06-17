@@ -9,15 +9,27 @@ import {
   BoxesIcon,
   EstimateIcon,
   AuthIcon,
+  FlaskIcon,
+  TruckIcon,
+  TagIcon,
+  BeakerIcon,
 } from "@/components/ui/icons";
 
 const TREE_NODES = [
   { key: "", label: "Contract", Icon: SummaryIcon, end: true },
-  { key: "diary", label: "Diary", Icon: DiaryIcon, stub: true },
-  { key: "quantity-book", label: "Quantity Book", Icon: BookIcon, stub: true },
+  { key: "diary", label: "Diary", Icon: DiaryIcon },
+  { key: "quantity-book", label: "Quantity Book", Icon: BookIcon },
   { key: "inventory", label: "Inventory", Icon: BoxesIcon },
-  { key: "pay-estimate", label: "Pay Estimate", Icon: EstimateIcon, stub: true },
-  { key: "authorizations", label: "Authorizations", Icon: AuthIcon, stub: true },
+  { key: "pay-estimate", label: "Pay Estimate", Icon: EstimateIcon },
+  { key: "authorizations", label: "Authorizations", Icon: AuthIcon },
+] as const;
+
+// Global, contract-independent surfaces (briefs 03 + 11).
+const MATERIALS_NODES = [
+  { to: "/samples", label: "Samples", Icon: FlaskIcon },
+  { to: "/materials/definitions", label: "Material Definition", Icon: TagIcon },
+  { to: "/materials/vendors", label: "Vendors", Icon: TruckIcon },
+  { to: "/materials/mix-designs", label: "Mix Design", Icon: BeakerIcon },
 ] as const;
 
 export function Sidebar() {
@@ -73,7 +85,6 @@ export function Sidebar() {
 
       <nav className="mt-1 flex flex-col gap-0.5">
         {TREE_NODES.map(({ key, label, Icon, ...rest }) => {
-          const stub = "stub" in rest && rest.stub;
           const end = "end" in rest && rest.end;
           const to = contractId
             ? `/contract/${contractId}${key ? `/${key}` : ""}`
@@ -112,14 +123,32 @@ export function Sidebar() {
                   {ready}
                 </span>
               )}
-              {stub && (
-                <span className="text-[10px] uppercase tracking-wide text-ink-faint opacity-0 transition group-hover:opacity-100">
-                  soon
-                </span>
-              )}
             </NavLink>
           );
         })}
+      </nav>
+
+      <div className="mt-5 px-3 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+        Materials
+      </div>
+      <nav className="mt-1 flex flex-col gap-0.5">
+        {MATERIALS_NODES.map(({ to, label, Icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            className={({ isActive }) =>
+              [
+                "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition",
+                isActive
+                  ? "bg-accent-soft font-semibold text-accent"
+                  : "text-ink-soft hover:bg-canvas hover:text-ink",
+              ].join(" ")
+            }
+          >
+            <Icon className="text-lg" />
+            <span className="flex-1">{label}</span>
+          </NavLink>
+        ))}
       </nav>
 
       <div className="mt-auto px-3 pt-4 text-[11px] text-ink-faint">
