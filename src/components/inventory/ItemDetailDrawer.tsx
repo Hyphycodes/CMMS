@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useStore } from "@/store/store";
 import { buildDetail } from "@/data/seed/generate";
 import {

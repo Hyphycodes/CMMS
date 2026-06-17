@@ -4,6 +4,7 @@ import type {
   EOIApproval,
   PayItemMaterialStatus,
   GroupStatus,
+  SampleStatus,
 } from "./types";
 
 export type PillTone = "amber" | "blue" | "green" | "indigo" | "red" | "slate";
@@ -32,9 +33,19 @@ const GROUP_TONE: Record<GroupStatus, PillTone> = {
   Deficient: "red",
 };
 
+const SAMPLE_TONE: Record<SampleStatus, PillTone> = {
+  "Logged In": "slate",
+  "In Testing": "amber",
+  Tested: "blue",
+  Validated: "indigo",
+  Approved: "green",
+  Rejected: "red",
+};
+
 export const inventoryTone = (s: InventoryStatus): PillTone => INVENTORY_TONE[s];
 export const eoiTone = (s: EOIApproval): PillTone => EOI_TONE[s];
 export const payItemTone = (s: PayItemMaterialStatus): PillTone => PAY_ITEM_TONE[s];
 export const groupTone = (s: GroupStatus): PillTone => GROUP_TONE[s];
+export const sampleTone = (s: SampleStatus): PillTone => SAMPLE_TONE[s];
 
 export const pillClass = (tone: PillTone): string => `pill pill-${tone}`;

@@ -21,6 +21,8 @@ import type {
   InventoryItem,
   PayItem,
   EOIApproval,
+  Sample,
+  Test,
 } from "@/domain/types";
 import type { SeedConfig, World } from "../seed/generate";
 import { TEST_TEMPLATES } from "../seed/generate";
@@ -106,6 +108,72 @@ export function createSupabaseDataSource(): DataSource {
         .upsert({ item_id: itemId, eoi_id: eoiId, approval, note }, { onConflict: "item_id,eoi_id" });
       if (error) throw error;
     },
+
+    async persistSample(sample: Sample): Promise<void> {
+      const { error } = await db.from("samples").upsert(sampleToRow(sample), { onConflict: "id" });
+      if (error) throw error;
+    },
+
+    async persistTest(test: Test): Promise<void> {
+      const { error } = await db.from("tests").upsert(testToRow(test), { onConflict: "id" });
+      if (error) throw error;
+    },
+  };
+}
+
+function sampleToRow(s: Sample): Record<string, unknown> {
+  return {
+    id: s.id,
+    sample_identifier: s.sampleIdentifier,
+    test_id: s.testId,
+    inspection_type: s.inspectionType,
+    inspector: s.inspector,
+    sample_date: s.sampleDate,
+    total_samples: s.totalSamples,
+    material_code: s.materialCode,
+    material_name: s.materialName,
+    desc1: s.desc1,
+    desc2: s.desc2,
+    desc3: s.desc3,
+    special_id: s.specialId,
+    inspected_qty: s.inspectedQty,
+    material_unit: s.materialUnit,
+    producer_number: s.producerNumber,
+    producer_name: s.producerName,
+    supplier_number: s.supplierNumber,
+    supplier_name: s.supplierName,
+    sampled_from: s.sampledFrom,
+    latitude: s.latitude,
+    longitude: s.longitude,
+    spec_year: s.specYear,
+    dsa_baba: s.dsaBaba,
+    responsible_lab: s.responsibleLab,
+    contract_id: s.contractId,
+    pay_item_number: s.payItemNumber,
+    inventory_item_id: s.inventoryItemId,
+    received_date: s.receivedDate,
+    started_date: s.startedDate,
+    completed_date: s.completedDate,
+    status: s.status,
+    approver_name: s.approverName,
+    approved_date: s.approvedDate,
+    note: s.note,
+    has_document: s.hasDocument,
+  };
+}
+
+function testToRow(t: Test): Record<string, unknown> {
+  return {
+    id: t.id,
+    sample_id: t.sampleId,
+    series: t.series,
+    test_type: t.testType,
+    tested_by: t.testedBy,
+    test_date: t.testDate,
+    fields: t.fields,
+    validated: t.validated,
+    validated_by: t.validatedBy,
+    validated_at: t.validatedAt,
   };
 }
 

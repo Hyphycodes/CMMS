@@ -8,7 +8,7 @@
  *
  * Architecture: load the world ONCE, work in the browser, persist only deltas.
  */
-import type { InventoryStatus, EOIApproval } from "@/domain/types";
+import type { InventoryStatus, EOIApproval, Sample, Test } from "@/domain/types";
 import type { World, SeedConfig } from "./seed/generate";
 
 export interface EoiDelta {
@@ -41,6 +41,11 @@ export interface DataSource {
     approval: EOIApproval,
     note: string,
   ): Promise<void>;
+
+  // Samples + tests (briefs 03–04). Status/approval/validation are field updates
+  // on the upserted object, so the seam stays two parallel upserts.
+  persistSample(sample: Sample): Promise<void>;
+  persistTest(test: Test): Promise<void>;
 }
 
 let cached: DataSource | null = null;

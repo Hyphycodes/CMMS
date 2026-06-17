@@ -17,6 +17,9 @@ import {
   IL_COUNTIES,
   EOI_CODES,
   MOA_CODES,
+  INSPECTION_TYPES,
+  SAMPLED_FROM,
+  RESPONSIBLE_LABS,
 } from "@/data/reference";
 import type {
   Contract,
@@ -126,14 +129,6 @@ export const TEST_TEMPLATES: TestTemplate[] = [
   },
 ];
 
-const INSPECTION_TYPES = ["ACC", "PRO", "IND", "QA"] as const;
-const SAMPLED_FROM = ["Jobsite", "Manufacturer's Plant", "Stockpile", "Truck", "Plant"] as const;
-const RESPONSIBLE_LABS = [
-  "District Lab",
-  "Central BMPR Lab",
-  "Independent Assurance",
-  "Producer QC Lab",
-] as const;
 
 // Pay item templates — real IDOT-style codes from the manual + plausible ones.
 const PAY_ITEM_TEMPLATES = [

@@ -10,7 +10,7 @@ import type {
   InventoryStatusUpdate,
   EoiDelta,
 } from "../dataSource";
-import type { EOIApproval, InventoryStatus } from "@/domain/types";
+import type { EOIApproval, InventoryStatus, Sample, Test } from "@/domain/types";
 import { generateWorld, type SeedConfig } from "../seed/generate";
 
 const STORAGE_KEY = "proof:deltas:v1";
@@ -19,10 +19,12 @@ interface StoredDeltas {
   inventoryStatus: Record<string, { status: InventoryStatus; readyAt: number | null }>;
   inventoryNote: Record<string, string>;
   eoiApproval: Record<string, EoiDelta>;
+  samples: Record<string, Sample>;
+  tests: Record<string, Test>;
 }
 
 function emptyDeltas(): StoredDeltas {
-  return { inventoryStatus: {}, inventoryNote: {}, eoiApproval: {} };
+  return { inventoryStatus: {}, inventoryNote: {}, eoiApproval: {}, samples: {}, tests: {} };
 }
 
 function readDeltas(): StoredDeltas {
@@ -82,6 +84,10 @@ export function createLocalDataSource(): DataSource {
       }
       for (const c of world.contracts) c.readyForReviewCount = ready.get(c.id) ?? 0;
 
+      // Overlay sample / test deltas (upserts by id; new rows append).
+      world.samples = overlay(world.samples, deltas.samples, (s) => s.id);
+      world.tests = overlay(world.tests, deltas.tests, (t) => t.id);
+
       return { world, eoiDeltas: deltas.eoiApproval };
     },
 
@@ -115,5 +121,38 @@ export function createLocalDataSource(): DataSource {
       d.eoiApproval[`${itemId}:${eoiId}`] = { approval, note };
       writeDeltas(d);
     },
+
+    async persistSample(sample: Sample): Promise<void> {
+      await latency();
+      maybeFail();
+      const d = readDeltas();
+      d.samples[sample.id] = sample;
+      writeDeltas(d);
+    },
+
+    async persistTest(test: Test): Promise<void> {
+      await latency();
+      maybeFail();
+      const d = readDeltas();
+      d.tests[test.id] = test;
+      writeDeltas(d);
+    },
   };
+}
+
+/** Upsert delta records onto a seed list by id (new rows append). */
+function overlay<T>(base: T[], deltas: Record<string, T>, key: (t: T) => string): T[] {
+  if (Object.keys(deltas).length === 0) return base;
+  const out = base.slice();
+  const index = new Map(out.map((row, i) => [key(row), i]));
+  for (const row of Object.values(deltas)) {
+    const k = key(row);
+    const i = index.get(k);
+    if (i !== undefined) out[i] = row;
+    else {
+      index.set(k, out.length);
+      out.push(row);
+    }
+  }
+  return out;
 }

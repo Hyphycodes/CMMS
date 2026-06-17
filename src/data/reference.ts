@@ -90,6 +90,22 @@ export const SUPPLIERS: Vendor[] = [
 export const EOI_CODES = ["TICK", "TEST", "DPR", "LA-15", "LIST", "CERT", "MARK"] as const;
 export const MOA_CODES = ["TEST", "QUAL", "CERT", "VISUAL"] as const;
 
+// --- Sample reference (Ch. 9) ----------------------------------------------
+export const INSPECTION_TYPES = ["ACC", "PRO", "IND", "QA"] as const;
+export const SAMPLED_FROM = [
+  "Jobsite",
+  "Manufacturer's Plant",
+  "Stockpile",
+  "Truck",
+  "Plant",
+] as const;
+export const RESPONSIBLE_LABS = [
+  "District Lab",
+  "Central BMPR Lab",
+  "Independent Assurance",
+  "Producer QC Lab",
+] as const;
+
 // --- Contract reference ----------------------------------------------------
 export const WORK_TYPES = [
   "HMA Resurfacing",

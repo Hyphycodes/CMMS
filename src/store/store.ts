@@ -14,6 +14,7 @@ import type {
   ReviewQueueItem,
   User,
   Sample,
+  SampleStatus,
   Test,
   TestTemplate,
 } from "@/domain/types";
@@ -75,6 +76,13 @@ interface State {
   setInventoryStatus(ids: string[], status: InventoryStatus, opts?: { note?: string }): void;
   setInventoryNote(id: string, note: string): void;
   setEoiApproval(itemId: string, eoiId: string, approval: EOIApproval, note?: string): void;
+
+  // samples + tests (briefs 03–04)
+  upsertSample(sample: Sample): void;
+  setSampleStatus(id: string, status: SampleStatus): void;
+  approveSample(id: string, opts: { approve: boolean; note?: string }): void;
+  upsertTest(test: Test): void;
+  validateTest(testId: string, validate: boolean): void;
 
   pushToast(kind: Toast["kind"], message: string): void;
   dismissToast(id: number): void;
@@ -258,6 +266,66 @@ export const useStore = create<State>((set, get) => ({
     }, "Couldn't save EOI approval");
   },
 
+  upsertSample(sample) {
+    if (!canDo(get().currentUser, "create_sample")) {
+      get().pushToast("error", "Your role can't create or edit samples.");
+      return;
+    }
+    saveSample(get, set, sample, "Couldn't save sample");
+  },
+
+  setSampleStatus(id, status) {
+    if (!canDo(get().currentUser, "enter_tests")) {
+      get().pushToast("error", "Only an inspector / lab can advance a sample's testing status.");
+      return;
+    }
+    const existing = get().samplesList.find((s) => s.id === id);
+    if (!existing) return;
+    saveSample(get, set, { ...existing, status }, "Couldn't save sample status");
+  },
+
+  approveSample(id, opts) {
+    if (!canDo(get().currentUser, "approve_sample")) {
+      get().pushToast("error", "Only Documentation / Admin can approve or reject a sample.");
+      return;
+    }
+    const existing = get().samplesList.find((s) => s.id === id);
+    if (!existing) return;
+    const next: Sample = {
+      ...existing,
+      status: opts.approve ? "Approved" : "Rejected",
+      approverName: get().currentUser?.name ?? "",
+      approvedDate: new Date().toISOString().slice(0, 10),
+      note: opts.note ? appendNote(existing.note, opts.note) : existing.note,
+    };
+    saveSample(get, set, next, opts.approve ? "Couldn't approve sample" : "Couldn't reject sample");
+    get().pushToast("success", opts.approve ? "Sample approved" : "Sample rejected");
+  },
+
+  upsertTest(test) {
+    if (!canDo(get().currentUser, "enter_tests")) {
+      get().pushToast("error", "Only an inspector / lab can enter test records.");
+      return;
+    }
+    saveTest(get, set, test, "Couldn't save test");
+  },
+
+  validateTest(testId, validate) {
+    if (!canDo(get().currentUser, "validate_test")) {
+      get().pushToast("error", "Your role can't validate tests.");
+      return;
+    }
+    const existing = get().testsList.find((t) => t.id === testId);
+    if (!existing) return;
+    const next: Test = {
+      ...existing,
+      validated: validate,
+      validatedBy: validate ? (get().currentUser?.name ?? "") : "",
+      validatedAt: validate ? new Date().toISOString().slice(0, 10) : null,
+    };
+    saveTest(get, set, next, "Couldn't save validation");
+  },
+
   pushToast(kind, message) {
     const id = toastSeq++;
     set({ toasts: [...get().toasts, { id, kind, message }] });
@@ -270,6 +338,49 @@ export const useStore = create<State>((set, get) => ({
 
 function appendNote(existing: string, addition: string): string {
   return existing ? `${existing}\n${addition}` : addition;
+}
+
+function saveSample(
+  get: () => State,
+  set: (p: Partial<State>) => void,
+  sample: Sample,
+  failMessage: string,
+) {
+  const list = get().samplesList;
+  const idx = list.findIndex((s) => s.id === sample.id);
+  const prev = idx >= 0 ? list[idx] : null;
+  set({ samplesList: idx >= 0 ? list.map((s) => (s.id === sample.id ? sample : s)) : [...list, sample] });
+  void persist(
+    get,
+    set,
+    async (ds) => ds.persistSample(sample),
+    () => {
+      const cur = get().samplesList;
+      set({
+        samplesList: prev ? cur.map((s) => (s.id === sample.id ? prev : s)) : cur.filter((s) => s.id !== sample.id),
+      });
+    },
+    failMessage,
+  );
+}
+
+function saveTest(get: () => State, set: (p: Partial<State>) => void, test: Test, failMessage: string) {
+  const list = get().testsList;
+  const idx = list.findIndex((t) => t.id === test.id);
+  const prev = idx >= 0 ? list[idx] : null;
+  set({ testsList: idx >= 0 ? list.map((t) => (t.id === test.id ? test : t)) : [...list, test] });
+  void persist(
+    get,
+    set,
+    async (ds) => ds.persistTest(test),
+    () => {
+      const cur = get().testsList;
+      set({
+        testsList: prev ? cur.map((t) => (t.id === test.id ? prev : t)) : cur.filter((t) => t.id !== test.id),
+      });
+    },
+    failMessage,
+  );
 }
 
 function recomputeCounts(get: () => State, set: (p: Partial<State>) => void, affectedIds: string[]) {
