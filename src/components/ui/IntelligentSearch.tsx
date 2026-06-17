@@ -5,7 +5,10 @@
  * 03, 05, 08, 11) — never copied per module.
  */
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { SearchIcon, XIcon } from "@/components/ui/icons";
+
+const ROW_HEIGHT = 38;
 
 export interface SearchColumn<T> {
   header: string;
@@ -40,7 +43,7 @@ export function IntelligentSearch<T>({
   value = "",
   placeholder = "Type to search…",
   disabled = false,
-  maxResults = 50,
+  maxResults = Infinity,
   ariaLabel,
   allowClear = false,
   onClear,
@@ -60,17 +63,26 @@ export function IntelligentSearch<T>({
 
   const results = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return haystacks.slice(0, maxResults).map((h) => h.it);
-    const tokens = needle.split(/\s+/);
-    const out: T[] = [];
-    for (const { it, hay } of haystacks) {
-      if (tokens.every((t) => hay.includes(t))) {
-        out.push(it);
-        if (out.length >= maxResults) break;
-      }
-    }
-    return out;
+    // No query → the whole list (scrollable). With a query → every match.
+    const all = !needle
+      ? haystacks.map((h) => h.it)
+      : (() => {
+          const tokens = needle.split(/\s+/);
+          const out: T[] = [];
+          for (const { it, hay } of haystacks) {
+            if (tokens.every((t) => hay.includes(t))) out.push(it);
+          }
+          return out;
+        })();
+    return Number.isFinite(maxResults) ? all.slice(0, maxResults) : all;
   }, [haystacks, query, maxResults]);
+
+  const rowVirtualizer = useVirtualizer({
+    count: results.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 12,
+  });
 
   useEffect(() => setActive(0), [query, open]);
 
@@ -108,11 +120,11 @@ export function IntelligentSearch<T>({
     }
   };
 
-  // keep active row in view
+  // keep active row in view (virtualized — scroll by index, not DOM query)
   useEffect(() => {
-    const el = listRef.current?.querySelector<HTMLElement>(`[data-idx="${active}"]`);
-    el?.scrollIntoView({ block: "nearest" });
-  }, [active]);
+    if (open && results.length) rowVirtualizer.scrollToIndex(active, { align: "auto" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, open]);
 
   const template = columns.map((c) => (c.grow ? "minmax(0,2fr)" : "minmax(0,1fr)")).join(" ");
 
@@ -158,53 +170,73 @@ export function IntelligentSearch<T>({
       </div>
 
       {open && !disabled && (
-        <div
-          id={listId}
-          role="listbox"
-          ref={listRef}
-          className="scroll-thin absolute z-50 mt-1 max-h-72 w-full min-w-[360px] overflow-y-auto rounded-lg border border-line bg-surface shadow-xl"
-        >
+        <div className="absolute z-50 mt-1 w-full min-w-[360px] overflow-hidden rounded-lg border border-line bg-surface shadow-xl">
+          {/* column header (fixed — outside the scroll area) */}
           <div
-            className="sticky top-0 grid gap-3 border-b border-line bg-canvas px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-ink-faint"
+            className="grid gap-3 border-b border-line bg-canvas px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-ink-faint"
             style={{ gridTemplateColumns: template }}
           >
             {columns.map((c) => (
               <span key={c.header} className="truncate">{c.header}</span>
             ))}
           </div>
+
           {results.length === 0 ? (
             <p className="px-3 py-4 text-center text-sm text-ink-faint">No matches.</p>
           ) : (
-            results.map((item, i) => (
-              <button
-                type="button"
-                key={getKey(item)}
-                data-idx={i}
-                role="option"
-                aria-selected={i === active}
-                onMouseEnter={() => setActive(i)}
-                onClick={() => choose(item)}
-                className={[
-                  "grid w-full gap-3 px-3 py-2 text-left text-sm transition",
-                  i === active ? "bg-accent-soft" : "hover:bg-canvas",
-                ].join(" ")}
-                style={{ gridTemplateColumns: template }}
-              >
-                {columns.map((c, ci) => (
-                  <span
-                    key={c.header}
-                    className={[
-                      "truncate",
-                      ci === 0 ? "font-medium text-ink" : "text-ink-soft",
-                      c.mono ? "font-mono text-[13px]" : "",
-                    ].join(" ")}
-                  >
-                    {c.get(item) || "—"}
-                  </span>
-                ))}
-              </button>
-            ))
+            <div id={listId} role="listbox" ref={listRef} className="scroll-thin max-h-72 overflow-y-auto">
+              <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative", width: "100%" }}>
+                {rowVirtualizer.getVirtualItems().map((vr) => {
+                  const item = results[vr.index];
+                  const i = vr.index;
+                  return (
+                    <button
+                      type="button"
+                      key={getKey(item)}
+                      data-idx={i}
+                      role="option"
+                      aria-selected={i === active}
+                      onMouseEnter={() => setActive(i)}
+                      onClick={() => choose(item)}
+                      className={[
+                        "grid w-full items-center gap-3 px-3 text-left text-sm transition",
+                        i === active ? "bg-accent-soft" : "hover:bg-canvas",
+                      ].join(" ")}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        height: vr.size,
+                        transform: `translateY(${vr.start}px)`,
+                        gridTemplateColumns: template,
+                      }}
+                    >
+                      {columns.map((c, ci) => (
+                        <span
+                          key={c.header}
+                          className={[
+                            "truncate",
+                            ci === 0 ? "font-medium text-ink" : "text-ink-soft",
+                            c.mono ? "font-mono text-[13px]" : "",
+                          ].join(" ")}
+                        >
+                          {c.get(item) || "—"}
+                        </span>
+                      ))}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           )}
+
+          {/* count footer — confirms the full set is here to scroll */}
+          <div className="border-t border-line bg-canvas px-3 py-1 text-right text-[11px] text-ink-faint tabular-nums">
+            {results.length === items.length
+              ? `${items.length.toLocaleString()} total`
+              : `${results.length.toLocaleString()} of ${items.length.toLocaleString()}`}
+          </div>
         </div>
       )}
     </div>
