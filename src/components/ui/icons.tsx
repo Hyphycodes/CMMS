@@ -12,6 +12,11 @@ const base = (className?: string) => ({
   height: "1em",
 });
 
+export const HomeIcon = ({ className }: P) => (
+  <svg {...base(className)}>
+    <path d="M4 11l8-7 8 7M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9" />
+  </svg>
+);
 export const InboxIcon = ({ className }: P) => (
   <svg {...base(className)}>
     <path d="M4 13l2 5h12l2-5M4 13V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v8M4 13h4l1.5 2h5L16 13h4" />

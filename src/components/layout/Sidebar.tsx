@@ -1,8 +1,7 @@
 import { NavLink, useParams } from "react-router-dom";
-import { useMemo } from "react";
 import { useStore } from "@/store/store";
 import {
-  InboxIcon,
+  HomeIcon,
   SummaryIcon,
   DiaryIcon,
   BookIcon,
@@ -38,10 +37,6 @@ export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: (
   const contract = useStore((s) => (contractId ? s.contract(contractId) : undefined));
   const contracts = useStore((s) => s.contracts);
   const visibleIds = useStore((s) => s.visibleIds);
-  const totalReady = useMemo(
-    () => contracts.reduce((n, c) => (visibleIds.has(c.id) ? n + c.readyForReviewCount : n), 0),
-    [contracts, visibleIds],
-  );
 
   return (
     <>
@@ -73,7 +68,8 @@ export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: (
       </button>
 
       <NavLink
-        to="/inbox"
+        to="/"
+        end
         className={({ isActive }) =>
           [
             "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition",
@@ -81,20 +77,8 @@ export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: (
           ].join(" ")
         }
       >
-        {({ isActive }) => (
-          <>
-            <InboxIcon className="text-lg" />
-            <span className="flex-1">My Work Tasks</span>
-            <span
-              className={[
-                "rounded-full px-2 py-0.5 text-xs font-bold tabular-nums",
-                isActive ? "bg-white/25 text-white" : "bg-blue-100 text-blue-700",
-              ].join(" ")}
-            >
-              {totalReady.toLocaleString()}
-            </span>
-          </>
-        )}
+        <HomeIcon className="text-lg" />
+        <span className="flex-1">Home</span>
       </NavLink>
 
       <div className="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
