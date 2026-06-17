@@ -90,3 +90,34 @@ contract's adjusted/current value — one update path, no drift.
 ### D14 — Contract sub-tab adds (subcontractors, documents) are in-memory until brief 12 storage
 Brief 06 adds rows in memory with a toast noting backend sync; real upload/Storage + the
 `documents` table land in brief 12. Insurance + Final Review are read-mostly (all fields preserved).
+
+---
+
+## Brief 14 — Real reference data import
+
+### D15 — Reference data is now the real IDOT masters, imported as JSON (not hand-typed)
+`src/data/reference/materials.json` (1,481 codes — MMI CMMS Part 3, 3/13/2026) and
+`vendors.json` (14,382 producer/supplier records — MISTIC master, 5/22/26) are imported into
+`reference.ts`. The synthetic `MATERIALS`/`PRODUCERS`/`SUPPLIERS` arrays are gone. `Material`
+and `Vendor` gained the real fields (moa/acceptableEoi/group/specialId/sampleSize/
+materialOwner/babaDsa/remark/specifications; zip/street/county/district/category/active).
+
+### D16 — conversionFactor is a per-family preset; the PDFs don't publish it
+The source omits a per-code material conversion factor, so `CONVERSION_FACTOR_BY_FAMILY`
+(reference.ts) defaults by family (HMA 0.672, Concrete 0.031, Aggregate 1.9, Steel 2.67,
+Paint 0.016, others 1.0 — the manual's representative values). `CONVERSION_FACTOR_TODO`
+flags every code still on the neutral 1.0 default for a real factor before grouping math
+(brief 05/08) is trusted in production. Per-code factors are **not** fabricated.
+
+### D17 — PRODUCERS = SUPPLIERS = active vendors; seed coherence via category→family
+The MISTIC list is one combined pool; a vendor serves as producer or supplier. Default pools
+are `active !== false` (7,671 of 14,382). The seed's `CATEGORY_TO_FAMILY` (generate.ts) maps
+real MISTIC category codes (ASPHLT→HMA, AGGRAV/AGCONC/…→Aggregate, REBARS/MTPROD→Steel,
+PAINT→Paint, etc.) to families; numeric/unmapped categories (175, 215, …) fall to Other and
+`producerFor` falls back to the full producer pool, so coherence holds without guessing.
+
+### D18 — JSON imported cast-free (`resolveJsonModule`)
+`tsconfig.json` gains `resolveJsonModule`. `VENDORS` is a direct typed assignment; the
+material `family` string is narrowed through a validating `FAMILY_BY_NAME` lookup (unknown →
+"Other"), so there are no `as` casts at the import boundary and dirty family values can't break
+the build. The only data-layer files touched are `reference.ts`, `generate.ts`, and `tsconfig`.

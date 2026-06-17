@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "@/store/store";
 import { buildOverlaidDetail } from "@/data/seed/generate";
-import { EOI_CODES, MOA_CODES } from "@/data/reference";
+import { EOI_CODES, MOA_CODES, MATERIALS } from "@/data/reference";
 import {
   INVENTORY_STATUSES,
   EOI_APPROVALS,
@@ -194,6 +194,8 @@ function DetailsTab({ detail, canEdit, onEdit }: { detail: InventoryDetail; canE
         <Field label="Linked Pay Items" value={detail.payItemNumbers.join(", ") || "—"} mono />
       </div>
 
+      <MaterialSpec materialCode={detail.materialCode} />
+
       <div>
         <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Inventory Note</label>
         <textarea
@@ -204,6 +206,27 @@ function DetailsTab({ detail, canEdit, onEdit }: { detail: InventoryDetail; canE
           placeholder="Optional — notes about this inventory…"
           className="w-full resize-none rounded-lg border border-line bg-canvas px-3 py-2 text-sm outline-none focus:border-accent"
         />
+      </div>
+    </div>
+  );
+}
+
+// Real CMMS Part 3 material spec (brief 14) — read off the material definition.
+function MaterialSpec({ materialCode }: { materialCode: string }) {
+  const material = MATERIALS.find((m) => m.code === materialCode);
+  if (!material) return null;
+  return (
+    <div>
+      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+        Material Specification (Material Definition)
+      </div>
+      <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+        <Field label="Method of Acceptance (MOA)" value={material.moa || "—"} />
+        <Field label="Acceptable EOI" value={material.acceptableEoi.join(" · ") || "—"} mono />
+        {material.babaDsa && <Field label="BABA / DSA" value={material.babaDsa} />}
+        {material.sampleSize && <Field label="Sample Size" value={material.sampleSize} />}
+        {material.specifications && <Field label="Specifications" value={material.specifications} />}
+        {material.group && <Field label="Material Group" value={material.group} />}
       </div>
     </div>
   );

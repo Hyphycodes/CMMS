@@ -33,6 +33,7 @@ import type {
   EOIApproval,
   PayItemMaterialStatus,
   Material,
+  MaterialFamily,
   Vendor,
   Sample,
   SampleStatus,
@@ -191,23 +192,36 @@ const PAY_ITEM_TEMPLATES = [
   { code: "21001000", description: "GEOTECHNICAL FABRIC FOR GROUND STABILIZATION", unit: "SQ YD", family: "Soil" },
 ] as const;
 
-// material family → likely producers (loose, for coherence). Falls back to all.
-const PRODUCERS_BY_FAMILY: Record<string, string[]> = {
-  HMA: ["2112-14", "2118-03", "5011-04", "5260-10"],
-  Paint: ["3181-05", "3320-06", "3702-09", "9255-03"],
-  Concrete: ["1668-12", "1702-05", "2240-07", "1266-02"],
-  Aggregate: ["51230-09", "1845-11", "1990-08", "4120-02", "5533-01"],
-  Steel: ["3543-14", "2394-10", "6024-04", "4455-13", "3454-02"],
-  Soil: ["75000-00"],
-  Hardware: ["2010-02", "4455-13"],
-  Other: ["1266-02", "5011-04"],
+// Real MISTIC category code → MaterialFamily (brief 14). Unmapped categories
+// (incl. numeric ones like "175"/"215") fall to Other — producerFor still works
+// via the all-producers fallback, so coherence holds without guessing.
+const CATEGORY_TO_FAMILY: Record<string, MaterialFamily> = {
+  ASPHLT: "HMA",
+  AGGRAV: "Aggregate", AGCONC: "Aggregate", AGDOLO: "Aggregate", AGLIME: "Aggregate",
+  AGGUKN: "Aggregate", AGSAND: "Aggregate", AGSTON: "Aggregate", AGSLAG: "Aggregate",
+  CEMENT: "Concrete", CONC: "Concrete", AGCEM: "Concrete", MASNRY: "Concrete",
+  REBARS: "Steel", MTPROD: "Steel", "L&SSTD": "Steel", CABLES: "Steel", STEEL: "Steel",
+  PAINT: "Paint",
+  LANDSC: "Soil", GEOTEX: "Soil",
+  FASTEN: "Hardware",
 };
 
+// Real producers grouped by inferred family for coherent seeding. Built once from
+// the live vendor pool; producerFor falls back to all producers for empty families.
+const PRODUCERS_BY_FAMILY: Record<MaterialFamily, Vendor[]> = (() => {
+  const map: Record<MaterialFamily, Vendor[]> = {
+    HMA: [], Paint: [], Concrete: [], Aggregate: [], Steel: [], Soil: [], Hardware: [], Other: [],
+  };
+  for (const v of PRODUCERS) {
+    const fam = (v.category && CATEGORY_TO_FAMILY[v.category]) || "Other";
+    map[fam].push(v);
+  }
+  return map;
+})();
+
 function producerFor(material: Material, rng: Rng): Vendor {
-  const pool = PRODUCERS_BY_FAMILY[material.family] ?? [];
-  const numbers = pool.length ? pool : PRODUCERS.map((p) => p.number);
-  const num = rng.pick(numbers);
-  return PRODUCERS.find((p) => p.number === num) ?? PRODUCERS[0];
+  const pool = PRODUCERS_BY_FAMILY[material.family];
+  return pool.length ? rng.pick(pool) : rng.pick(PRODUCERS);
 }
 
 function money(rng: Rng, min: number, max: number): number {

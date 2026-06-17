@@ -3,11 +3,10 @@
  * Global (no contract scope). Each reuses DataGrid; the material picker that
  * powers samples/inventory/quantity-book is the one IntelligentSearch (brief 01).
  */
-import { useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useStore } from "@/store/store";
-import { MATERIALS, PRODUCERS, SUPPLIERS } from "@/data/reference";
-import type { Material, MixDesign } from "@/domain/types";
+import { MATERIALS, VENDORS } from "@/data/reference";
+import type { Material, MixDesign, Vendor } from "@/domain/types";
 import { DataGrid } from "@/components/ui/DataGrid";
 import { Pill } from "@/components/ui/Pill";
 
@@ -32,55 +31,53 @@ export function MaterialDefinitionPage() {
     { id: "name", accessorKey: "name", header: "Material Name", size: 240, meta: { grow: true } },
     { id: "unit", accessorKey: "unit", header: "UOM", size: 90 },
     { id: "moa", accessorKey: "moa", header: "MOA", size: 90 },
-    { id: "eoi", accessorFn: (m) => m.acceptableEoi.join(" · "), header: "Acceptable EOI", size: 180, cell: ({ row }) => <span className="font-mono text-[12px] text-ink-soft">{row.original.acceptableEoi.join(" · ")}</span> },
-    { id: "family", accessorKey: "family", header: "Family", size: 110 },
-    { id: "cf", accessorKey: "conversionFactor", header: "Conversion Factor", size: 140, meta: { align: "right" } },
+    { id: "eoi", accessorFn: (m) => m.acceptableEoi.join(" · "), header: "Acceptable EOI", size: 160, cell: ({ row }) => <span className="font-mono text-[12px] text-ink-soft">{row.original.acceptableEoi.join(" · ")}</span> },
+    { id: "family", accessorKey: "family", header: "Family", size: 100 },
+    { id: "group", accessorFn: (m) => m.group ?? "", header: "Group", size: 130, cell: ({ getValue }) => (getValue() as string) || "—" },
+    { id: "cf", accessorKey: "conversionFactor", header: "Conv. Factor", size: 110, meta: { align: "right" } },
+    { id: "babaDsa", accessorFn: (m) => m.babaDsa ?? "", header: "BABA/DSA", size: 100, cell: ({ getValue }) => (getValue() as string) || "—" },
+    { id: "sampleSize", accessorFn: (m) => m.sampleSize ?? "", header: "Sample Size", size: 220, cell: ({ getValue }) => <span className="truncate text-[12px] text-ink-soft" title={getValue() as string}>{(getValue() as string) || "—"}</span> },
+    { id: "specs", accessorFn: (m) => m.specifications ?? "", header: "Specifications", size: 260, meta: { grow: true }, cell: ({ getValue }) => <span className="truncate text-[12px] text-ink-soft" title={getValue() as string}>{(getValue() as string) || "—"}</span> },
   ];
   return (
-    <PageShell title="Material Definition" subtitle="Master Material Code Listing — drives inventory MOA + EOI and test templates.">
+    <PageShell title="Material Definition" subtitle="Master Material Code Listing (MMI CMMS Part 3, 3/13/2026) — drives inventory MOA + EOI and test templates.">
       <DataGrid
         data={MATERIALS}
         columns={columns}
         getRowId={(m) => m.code}
+        minWidth={1700}
         toolbar
         searchable
-        searchPlaceholder="Filter by code, name, family…"
+        searchPlaceholder="Filter by code, name, family, MOA…"
         countLabel="materials"
-        globalSearchText={(m) => `${m.code} ${m.name} ${m.family} ${m.moa} ${m.unit}`}
+        globalSearchText={(m) => `${m.code} ${m.name} ${m.family} ${m.moa} ${m.unit} ${m.group ?? ""} ${m.specifications ?? ""}`}
         emptyMessage="No materials."
       />
     </PageShell>
   );
 }
 
-type VendorRow = { number: string; name: string; city: string; state: string; kind: "Producer" | "Supplier" };
-
 export function VendorsPage() {
-  const rows = useMemo<VendorRow[]>(
-    () => [
-      ...PRODUCERS.map((v) => ({ ...v, kind: "Producer" as const })),
-      ...SUPPLIERS.map((v) => ({ ...v, kind: "Supplier" as const })),
-    ],
-    [],
-  );
-  const columns: ColumnDef<VendorRow>[] = [
+  const columns: ColumnDef<Vendor>[] = [
     { id: "number", accessorKey: "number", header: "Number", size: 110, cell: ({ getValue }) => <span className="font-mono text-[13px]">{getValue() as string}</span> },
     { id: "name", accessorKey: "name", header: "Name", size: 260, meta: { grow: true } },
     { id: "city", accessorKey: "city", header: "City", size: 150 },
-    { id: "state", accessorKey: "state", header: "State", size: 80 },
-    { id: "kind", accessorKey: "kind", header: "Type", size: 110, cell: ({ row }) => <Pill tone={row.original.kind === "Producer" ? "blue" : "slate"}>{row.original.kind}</Pill> },
+    { id: "state", accessorKey: "state", header: "State", size: 70 },
+    { id: "category", accessorFn: (v) => v.category ?? "", header: "Category", size: 110, cell: ({ getValue }) => <span className="font-mono text-[12px] text-ink-soft">{(getValue() as string) || "—"}</span> },
+    { id: "district", accessorFn: (v) => v.district ?? "", header: "District", size: 90, cell: ({ getValue }) => (getValue() as string) || "—" },
+    { id: "active", accessorFn: (v) => (v.active === false ? "Inactive" : "Active"), header: "Status", size: 110, cell: ({ row }) => <Pill tone={row.original.active === false ? "slate" : "green"}>{row.original.active === false ? "Inactive" : "Active"}</Pill> },
   ];
   return (
-    <PageShell title="Vendors" subtitle="Producers + suppliers — number, name, location. Check effective date when a material+producer pairing isn't found.">
+    <PageShell title="Vendors" subtitle="MISTIC Producer/Supplier master (5/22/26) — a vendor serves as producer or supplier. Active records by default; inactive shown for history.">
       <DataGrid
-        data={rows}
+        data={VENDORS}
         columns={columns}
-        getRowId={(v) => `${v.kind}:${v.number}`}
+        getRowId={(v) => v.number}
         toolbar
         searchable
-        searchPlaceholder="Filter vendors by number, name, city…"
+        searchPlaceholder="Filter vendors by number, name, city, category…"
         countLabel="vendors"
-        globalSearchText={(v) => `${v.number} ${v.name} ${v.city} ${v.state} ${v.kind}`}
+        globalSearchText={(v) => `${v.number} ${v.name} ${v.city} ${v.state} ${v.category ?? ""}`}
         emptyMessage="No vendors."
       />
     </PageShell>

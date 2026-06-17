@@ -81,6 +81,14 @@ export interface Material {
   moa: string;
   /** acceptable Evidence of Inspection codes for this material */
   acceptableEoi: string[];
+  // Real CMMS Part 3 fields (MMI 3/13/2026) — brief 14.
+  group?: string;
+  specialId?: string;
+  sampleSize?: string;
+  materialOwner?: string;
+  babaDsa?: string;
+  remark?: string;
+  specifications?: string;
 }
 
 export type MaterialFamily =
@@ -108,6 +116,13 @@ export interface Vendor {
   name: string; // e.g. "Advance Asphalt Co"
   city: string;
   state: string;
+  // Real MISTIC master fields (5/22/26) — brief 14.
+  zip?: string;
+  street?: string;
+  county?: string;
+  district?: string;
+  category?: string;
+  active?: boolean;
 }
 
 export interface PayItem {
