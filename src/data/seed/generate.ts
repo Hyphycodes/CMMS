@@ -17,9 +17,6 @@ import {
   IL_COUNTIES,
   EOI_CODES,
   MOA_CODES,
-  INSPECTION_TYPES,
-  SAMPLED_FROM,
-  RESPONSIBLE_LABS,
 } from "@/data/reference";
 import type {
   Contract,
@@ -38,7 +35,6 @@ import type {
   Sample,
   SampleStatus,
   Test,
-  TestField,
   TestTemplate,
   DiaryDay,
   DiarySuspension,
@@ -53,9 +49,26 @@ import type {
 import { makeRng, type Rng } from "./rng";
 import { buildPayItemMaterials } from "@/domain/grouping";
 import { lineAmount, sumAmounts } from "@/domain/money";
+import myProjects from "@/data/reference/my_projects.json";
+import mySamples from "@/data/reference/my_samples.json";
 
 export const MASTER_SEED = "proof-cmms-v1";
 const MS_DAY = 86_400_000;
+
+/** Stable contract id for a real project, keyed by its number. */
+export const realContractId = (number: string): string => `ct_real_${number}`;
+
+/** Parse a legacy "M/D/YYYY" (or already-ISO) date into ISO "YYYY-MM-DD". */
+function parseLegacyDate(s: string | null | undefined): string | null {
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (!m) return null;
+  const mm = m[1].padStart(2, "0");
+  const dd = m[2].padStart(2, "0");
+  const yyyy = m[3].length === 2 ? `20${m[3]}` : m[3];
+  return `${yyyy}-${mm}-${dd}`;
+}
 
 export interface SeedConfig {
   contracts: number;
@@ -531,6 +544,118 @@ function generatePlacements(contracts: Contract[], payItemsByContract: Map<strin
 }
 
 /** Build the full world deterministically. */
+/**
+ * A real project (my_projects.json) as a minimal Contract — records exist so
+ * samples can link to them; names/summary details are intentionally empty for
+ * the user to fill later. All required nested objects are empty/zeroed.
+ */
+function makeRealContract(p: { number: string; name: string; workType: string }): Contract {
+  const emptySummary: ContractSummary = {
+    jobDescription: "", section: "", route: "", county: "", district: 0,
+    projectNumber: "", federalProjectNumber: "", contractStatus: "Active",
+    primeContractor: "", primeContractorId: "", residentEngineer: "",
+    supervisingFieldEngineer: "", districtConstructionEngineer: "", designerFirm: "",
+    projectImplementationEngineer: "", progressScheduleReceived: null, ehsPlanReceived: null,
+    dbeProgramReceived: null, lettingDate: null, awardDate: null, executedDate: null,
+    noticeToProceedDate: null, workBeginDate: null, contractCompletionDate: null,
+    finalInspectionDate: null, contractSuspendedDate: null, engineersEstimate: 0,
+    awardedAmount: 0, currentContractAmount: 0, totalPaidToDate: 0, dbeGoalPct: 0,
+    dbeCommittedPct: 0, adjustmentAmount: 0, primaryWorkType: p.workType, terrain: "",
+    funding: "", specificationYear: "", units: "English", timeType: "", originalContractTime: 0,
+    currentContractTime: 0, timeChargedToDate: 0, liquidatedDamagesPerDay: 0,
+  };
+  return {
+    id: realContractId(p.number),
+    number: p.number,
+    name: p.name || p.number,
+    county: "",
+    district: 0,
+    workType: p.workType,
+    inventoryCount: 0,
+    readyForReviewCount: 0,
+    summary: emptySummary,
+    insurance: {
+      contractorNo: "", primeContractorName: "", itemNo: "", finalAcceptanceDate: null,
+      pctComplete: 0, pctCompleteDate: null, policies: [], railroad: [],
+    },
+    subcontractors: [],
+    projectDocuments: [],
+    finalReview: {
+      finalFromDistrict: {
+        deadlineForFinalFrcBills: null, finalInspectionLetters: null, allPayItemsFinal: false,
+        fqSent: null, fqAgree: null, fqCertified: null, fqReceived: null, challengedFq: false,
+        intentToFileClaim: false, claimL1: null, claimL2: null, claimResolved: null,
+        qtyAdjustmentLetter: null, opsSignoff: null, finalInspectionBc71: null, fpeBc111: null,
+        localAgencyCertBc608: null, recordsPayrollRetention: null, recordsLocation: "",
+        stateCompletionNotice: null, forCoToReview: false, projectControlManager: "",
+      },
+      documentationReview: {
+        recordsTurnedIn: null, auditStart: null, numIssues: 0, auditGivenToResident: null,
+        correctionsDue: null, correctionsSubmitted: null, auditFinalized: null, reviewer: "",
+        progressReview: "", remarks: "",
+      },
+      materialsReview: {
+        numIssues: 0, exceptions: 0, reviewStart: null, auditGiven: null, correctionsDue: null,
+        pccSignoffSent: null, pccSignoffRcvd: null, hmaSignoffSent: null, hmaSignoffRcvd: null,
+        soilsSignoffSent: null, soilsSignoffRcvd: null, materialsCertDate: null,
+        exceptionLetterDate: null, reviewer: "", remarks: "",
+      },
+      performancePeriod: [],
+      dbeCloseOut: {
+        commitmentPct: 0, bc2115: false, allSbe2115: false, approved: false, goalMet: false,
+        dbeFinalDocSbe2028: false, waiverRequested: false, waiverGranted: false,
+        packet2028Approved: false, eeoRemarks: "", eeoRepresentative: "",
+      },
+    },
+  };
+}
+
+/** The 32 real samples (my_samples.json), mapped to the Sample type with fresh
+ * generated identifiers + Test IDs (the source leaves them blank). */
+function loadRealSamples(): Sample[] {
+  return mySamples.map((s, i): Sample => {
+    const seq = i + 1;
+    return {
+      id: `smp_real_${seq}`,
+      sampleIdentifier: `SMP-${100000 + seq}`,
+      testId: String(50000 + seq),
+      inspectionType: s.inspectionType,
+      inspector: s.inspector,
+      sampleDate: parseLegacyDate(s.sampleDate) ?? "",
+      totalSamples: s.totalSamples,
+      materialCode: s.materialCode,
+      materialName: s.materialName,
+      desc1: s.desc1 ?? "",
+      desc2: s.desc2 ?? "",
+      desc3: s.desc3 ?? "",
+      specialId: s.specialId ?? "",
+      inspectedQty: s.inspectedQty,
+      materialUnit: s.unit,
+      producerNumber: s.producerNumber,
+      producerName: s.producerName,
+      supplierNumber: s.supplierNumber,
+      supplierName: s.supplierName,
+      sampledFrom: s.sampledFrom,
+      latitude: "",
+      longitude: "",
+      specYear: s.specYear,
+      dsaBaba: s.dsaBaba,
+      responsibleLab: s.responsibleLab,
+      contractId: s.contract ? realContractId(s.contract) : null,
+      payItemNumber: null,
+      inventoryItemId: null,
+      receivedDate: parseLegacyDate(s.receivedDate),
+      startedDate: parseLegacyDate(s.startedDate),
+      completedDate: parseLegacyDate(s.completedDate),
+      status: s.status as SampleStatus,
+      approverName: s.approverName ?? "",
+      approvedDate: parseLegacyDate(s.approvedDate),
+      note: "",
+      hasDocument: false,
+    };
+  });
+}
+
 export function generateWorld(config: SeedConfig = DEFAULT_SEED_CONFIG): World {
   const root = makeRng(MASTER_SEED);
   const contracts: Contract[] = [];
@@ -541,6 +666,14 @@ export function generateWorld(config: SeedConfig = DEFAULT_SEED_CONFIG): World {
     const contract = generateContract(i, cRng);
     contracts.push(contract);
     payItemsByContract.set(contract.id, generatePayItems(contract, cRng));
+  }
+
+  // Real projects (my_projects.json) — added so the 32 real samples link to a
+  // real contract. Minimal/empty; no pay items until the user fills them in.
+  for (const p of myProjects) {
+    const real = makeRealContract(p);
+    contracts.push(real);
+    payItemsByContract.set(real.id, []);
   }
 
   // Distribute inventory items across contracts with a realistic spread:
@@ -619,7 +752,9 @@ export function generateWorld(config: SeedConfig = DEFAULT_SEED_CONFIG): World {
     c.readyForReviewCount = arr.filter((i) => i.status === "Ready for Review").length;
   }
 
-  const { samples, tests } = generateSamplesAndTests(contracts, byContract, payItemsByContract);
+  // Samples are the user's 32 real samples only — no synthetic generation.
+  const samples = loadRealSamples();
+  const tests: Test[] = [];
 
   const suspensionsByContract = new Map<string, DiarySuspension[]>();
   for (const c of contracts) suspensionsByContract.set(c.id, generateSuspensions(c.id));
@@ -817,139 +952,6 @@ export function buildDiaryDay(contract: Contract, date: string): DiaryDay {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Samples + tests (briefs 03–04) — deterministic, coherent with producers
-// ---------------------------------------------------------------------------
-
-function generateSamplesAndTests(
-  contracts: Contract[],
-  byContract: Map<string, InventoryItem[]>,
-  payItemsByContract: Map<string, PayItem[]>,
-): { samples: Sample[]; tests: Test[] } {
-  const samples: Sample[] = [];
-  const tests: Test[] = [];
-  let seq = 1;
-
-  for (const contract of contracts) {
-    const rng = makeRng(`${MASTER_SEED}:samples:${contract.id}`);
-    const n = rng.weighted<number>([
-      [0, 3],
-      [1, 3],
-      [2, 4],
-      [3, 3],
-      [4, 2],
-      [6, 1],
-    ]);
-    const items = byContract.get(contract.id) ?? [];
-    const payItems = payItemsByContract.get(contract.id) ?? [];
-
-    for (let k = 0; k < n; k++) {
-      const material = rng.pick(MATERIALS);
-      const producer = producerFor(material, rng);
-      const supplier = rng.pick(SUPPLIERS);
-      const sampleEpoch = Date.now() - rng.int(5, 220) * MS_DAY;
-      const status = rng.weighted<SampleStatus>([
-        ["Logged In", 3],
-        ["In Testing", 2],
-        ["Tested", 2],
-        ["Validated", 2],
-        ["Approved", 4],
-        ["Rejected", 1],
-      ]);
-      const linkedItem =
-        items.length && rng.bool(0.4)
-          ? items.find((i) => i.materialCode === material.code) ?? null
-          : null;
-      const payItem = payItems.length && rng.bool(0.5) ? rng.pick(payItems) : null;
-
-      const received = status !== "Logged In" ? sampleEpoch + rng.int(1, 5) * MS_DAY : null;
-      const started =
-        status === "In Testing" || status === "Tested" || status === "Validated" || status === "Approved" || status === "Rejected"
-          ? (received ?? sampleEpoch) + rng.int(1, 4) * MS_DAY
-          : null;
-      const completed =
-        status === "Tested" || status === "Validated" || status === "Approved" || status === "Rejected"
-          ? (started ?? sampleEpoch) + rng.int(1, 10) * MS_DAY
-          : null;
-      const approved = status === "Approved" || status === "Rejected";
-
-      const sample: Sample = {
-        id: `smp_${seq}`,
-        sampleIdentifier: `SMP-${100000 + seq}`,
-        testId: String(50000 + seq),
-        inspectionType: rng.pick(INSPECTION_TYPES),
-        inspector: rng.pick(STAFF_NAMES),
-        sampleDate: isoDate(sampleEpoch),
-        totalSamples: rng.int(1, 5),
-        materialCode: material.code,
-        materialName: material.name,
-        desc1: material.family === "Steel" ? rng.pick(["#4", "#5", "#6", "#8"]) : "",
-        desc2: "",
-        desc3: "",
-        specialId: rng.bool(0.2) ? `SID-${rng.int(100, 999)}` : "",
-        inspectedQty: rng.float(20, 800, 1),
-        materialUnit: material.unit,
-        producerNumber: producer.number,
-        producerName: producer.name,
-        supplierNumber: supplier.number,
-        supplierName: supplier.name,
-        sampledFrom: rng.pick(SAMPLED_FROM),
-        latitude: (40 + rng.float(0, 2, 5)).toFixed(5),
-        longitude: (-89 - rng.float(0, 2, 5)).toFixed(5),
-        specYear: rng.pick(["2016", "2022"]),
-        dsaBaba: rng.bool(0.3),
-        responsibleLab: rng.pick(RESPONSIBLE_LABS),
-        contractId: contract.id,
-        payItemNumber: payItem?.number ?? null,
-        inventoryItemId: linkedItem?.id ?? null,
-        receivedDate: received ? isoDate(received) : null,
-        startedDate: started ? isoDate(started) : null,
-        completedDate: completed ? isoDate(completed) : null,
-        status,
-        approverName: approved ? rng.pick(STAFF_NAMES) : "",
-        approvedDate: approved && completed ? isoDate(completed + rng.int(1, 6) * MS_DAY) : null,
-        note: rng.bool(0.2) ? "Sample logged per QC plan." : "",
-        hasDocument: rng.bool(0.5),
-      };
-      samples.push(sample);
-
-      // Tests for anything past Logged In.
-      if (status !== "Logged In") {
-        const template =
-          TEST_TEMPLATES.find((t) => t.materialFamily === material.family) ?? TEST_TEMPLATES[0];
-        const seriesCount = rng.bool(0.3) ? 2 : 1;
-        const validated = status === "Validated" || status === "Approved";
-        for (let s = 1; s <= seriesCount; s++) {
-          const fields: TestField[] = template.fields.map((f) => {
-            const val = rng.float(1, 100, 1);
-            return {
-              key: f.key,
-              label: f.label,
-              value: String(val),
-              spec: rng.bool(0.6) ? `≥ ${rng.float(1, 50, 1)}` : "",
-              pass: rng.bool(0.85),
-            };
-          });
-          tests.push({
-            id: `tst_${seq}_${s}`,
-            sampleId: sample.id,
-            series: s,
-            testType: template.testType,
-            testedBy: rng.pick(STAFF_NAMES),
-            testDate: completed ? isoDate(completed) : started ? isoDate(started) : null,
-            fields,
-            validated,
-            validatedBy: validated ? rng.pick(STAFF_NAMES) : "",
-            validatedAt: validated && completed ? isoDate(completed + MS_DAY) : null,
-          });
-        }
-      }
-      seq++;
-    }
-  }
-
-  return { samples, tests };
-}
 
 const NOTES = [
   "Awaiting cert from producer.",

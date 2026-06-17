@@ -1,127 +1,126 @@
 /**
- * Sample detail (briefs 03–04). Details / Tests / Documents tabs. Header carries
- * the testing status control (inspector/lab), Approve/Reject (documentation), and
- * Create Sample Label. The Tests tab adds template-driven test records with
- * multiple series, a side-by-side comparison, and a role-gated Validate action.
+ * Sample detail (briefs 03–04, reworked per user request). One clean, scrollable
+ * page — NOT tabbed — that shows every field grouped into clear sections
+ * (Identification, Material, Source, Linkage, Dates, Review) plus the Tests
+ * records inline (validation stays here). Approve / Reject are NOT here: sample
+ * approval is right-click only, on the samples list (see SamplesPage).
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useStore } from "@/store/store";
 import { MATERIALS } from "@/data/reference";
 import { SAMPLE_STATUSES, type Sample, type Test } from "@/domain/types";
-import { DetailDrawer } from "@/components/ui/DetailDrawer";
 import { FieldGroup } from "@/components/ui/FieldGroup";
 import { Pill } from "@/components/ui/Pill";
 import { EditableRowTable, EditText, type EditableColumn } from "@/components/ui/EditableRowTable";
-import { CheckIcon } from "@/components/ui/icons";
+import { CheckIcon, XIcon } from "@/components/ui/icons";
 import { sampleTone } from "@/domain/status";
 import type { Field } from "@/lib/fields";
 
-const TABS = ["Details", "Tests", "Documents"] as const;
-type Tab = (typeof TABS)[number];
-
-// statuses an inspector/lab moves through (Approved/Rejected go via the buttons)
+// statuses an inspector/lab moves through (Approved/Rejected are set via the
+// right-click approval on the list, never here)
 const TESTING_STATUSES = SAMPLE_STATUSES.filter((s) => s !== "Approved" && s !== "Rejected");
 
 export function SampleDetailDrawer({ sampleId, onClose }: { sampleId: string; onClose: () => void }) {
   const sample = useStore((s) => s.samplesList.find((x) => x.id === sampleId));
   const testsList = useStore((s) => s.testsList);
-  const [tab, setTab] = useState<Tab>("Details");
 
   const tests = useMemo(
     () => testsList.filter((t) => t.sampleId === sampleId).sort((a, b) => a.series - b.series),
     [testsList, sampleId],
   );
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   if (!sample) return null;
 
-  const tabs = TABS.map((t) => ({ id: t, label: t, count: t === "Tests" ? tests.length : 0 }));
-
   return (
-    <DetailDrawer<Tab>
-      eyebrow={
-        <>
-          <span className="font-mono text-sm text-ink-faint">{sample.sampleIdentifier}</span>
-          <span className="text-xs text-ink-faint">Test ID {sample.testId}</span>
-          <Pill tone={sampleTone(sample.status)}>{sample.status}</Pill>
-        </>
-      }
-      title={
-        <>
-          <span className="font-mono">{sample.materialCode}</span>
-          <span className="mx-1.5 text-ink-faint">—</span>
-          {sample.materialName}
-        </>
-      }
-      subtitle={`${sample.inspector} · ${sample.producerName}`}
-      actions={<SampleActions sample={sample} />}
-      tabs={tabs}
-      activeTab={tab}
-      onTabChange={setTab}
-      onClose={onClose}
-      width={840}
-    >
-      {tab === "Details" && <DetailsTab sample={sample} />}
-      {tab === "Tests" && <TestsTab sample={sample} tests={tests} />}
-      {tab === "Documents" && <DocumentsTab sample={sample} />}
-    </DetailDrawer>
-  );
-}
-
-function SampleActions({ sample }: { sample: Sample }) {
-  const canTest = useStore((s) => s.can("enter_tests"));
-  const canApprove = useStore((s) => s.can("approve_sample"));
-  const setSampleStatus = useStore((s) => s.setSampleStatus);
-  const approveSample = useStore((s) => s.approveSample);
-  const decided = sample.status === "Approved" || sample.status === "Rejected";
-
-  return (
-    <div className="flex flex-col items-end gap-1.5">
-      {canTest && !decided && (
-        <select
-          value={sample.status}
-          onChange={(e) => setSampleStatus(sample.id, e.target.value as Sample["status"])}
-          className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm font-medium outline-none focus:border-accent"
-        >
-          {TESTING_STATUSES.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-      )}
-      {canApprove && (
-        <div className="flex gap-1.5">
-          <button
-            onClick={() => approveSample(sample.id, { approve: true })}
-            className="rounded-lg border border-green-300 bg-green-50 px-2.5 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100"
-          >
-            Approve
+    <div className="fixed inset-0 z-30 flex justify-end" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
+      <div
+        className="relative flex h-full flex-col bg-surface shadow-2xl outline-none"
+        style={{ width: 860, maxWidth: "94vw" }}
+      >
+        {/* header */}
+        <div className="flex items-start gap-3 border-b border-line px-6 py-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-mono text-sm font-semibold text-ink">{sample.sampleIdentifier}</span>
+              <span className="text-xs text-ink-faint">Test ID {sample.testId}</span>
+              <Pill tone={sampleTone(sample.status)}>{sample.status}</Pill>
+            </div>
+            <h2 className="mt-1 truncate text-lg font-semibold text-ink">
+              <span className="font-mono">{sample.materialCode}</span>
+              <span className="mx-1.5 text-ink-faint">—</span>
+              {sample.materialName}
+            </h2>
+            <p className="text-xs text-ink-soft">
+              {sample.inspector} · {sample.producerName}
+            </p>
+          </div>
+          <button onClick={() => printLabel(sample)} className="shrink-0 text-xs font-medium text-accent hover:underline">
+            Create Sample Label
           </button>
-          <button
-            onClick={() => {
-              const note = window.prompt("Reason for rejection:") ?? "";
-              if (note.trim()) approveSample(sample.id, { approve: false, note: note.trim() });
-            }}
-            className="rounded-lg border border-red-300 bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
-          >
-            Reject
+          <button onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-ink-faint hover:bg-canvas">
+            <XIcon className="text-xl" />
           </button>
         </div>
-      )}
-      <button onClick={() => printLabel(sample)} className="text-xs text-accent hover:underline">
-        Create Sample Label
-      </button>
+
+        {/* one scrolling page — every field, grouped */}
+        <div className="scroll-thin min-h-0 flex-1 overflow-y-auto px-6 py-5">
+          <div className="mx-auto max-w-3xl space-y-4">
+            <IdentificationGroup sample={sample} />
+            <MaterialGroup sample={sample} />
+            <SourceGroup sample={sample} />
+            <LinkageGroup sample={sample} />
+            <DatesGroup sample={sample} />
+            <ReviewGroup sample={sample} />
+            <TestsSection sample={sample} tests={tests} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-function DetailsTab({ sample }: { sample: Sample }) {
-  const contractsById = useStore((s) => s.contractsById);
-  const id: Field[] = [
+function IdentificationGroup({ sample }: { sample: Sample }) {
+  const canTest = useStore((s) => s.can("enter_tests"));
+  const setSampleStatus = useStore((s) => s.setSampleStatus);
+  const decided = sample.status === "Approved" || sample.status === "Rejected";
+
+  const fields: Field[] = [
     { label: "Inspection Type", value: sample.inspectionType },
     { label: "Inspector", value: sample.inspector },
     { label: "Sample Date", value: sample.sampleDate, type: "date" },
     { label: "Total Samples", value: sample.totalSamples, type: "number" },
+    { label: "Status", value: sample.status },
   ];
-  const material: Field[] = [
+
+  return (
+    <FieldGroup title="Identification" fields={fields} showEmpty>
+      {canTest && !decided && (
+        <div className="mt-3 flex items-center gap-2">
+          <label className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Testing Status</label>
+          <select
+            value={sample.status}
+            onChange={(e) => setSampleStatus(sample.id, e.target.value as Sample["status"])}
+            className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm font-medium outline-none focus:border-accent"
+          >
+            {TESTING_STATUSES.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+      )}
+    </FieldGroup>
+  );
+}
+
+function MaterialGroup({ sample }: { sample: Sample }) {
+  const fields: Field[] = [
     { label: "Material Code", value: sample.materialCode, type: "mono" },
     { label: "Material Name", value: sample.materialName },
     { label: "Description 1", value: sample.desc1 },
@@ -130,48 +129,50 @@ function DetailsTab({ sample }: { sample: Sample }) {
     { label: "Special ID", value: sample.specialId },
     { label: "Inspected Quantity", value: `${sample.inspectedQty} ${sample.materialUnit}` },
   ];
-  const source: Field[] = [
+  return <FieldGroup title="Material" fields={fields} showEmpty />;
+}
+
+function SourceGroup({ sample }: { sample: Sample }) {
+  const fields: Field[] = [
     { label: "Producer", value: `${sample.producerNumber} — ${sample.producerName}` },
     { label: "Supplier", value: `${sample.supplierNumber} — ${sample.supplierName}` },
     { label: "Sampled From", value: sample.sampledFrom },
-    { label: "Latitude", value: sample.latitude },
-    { label: "Longitude", value: sample.longitude },
-  ];
-  const spec: Field[] = [
     { label: "Spec & Year", value: sample.specYear },
     { label: "DSA/BABA", value: sample.dsaBaba, type: "bool" },
     { label: "Responsible Lab", value: sample.responsibleLab },
   ];
-  const linkage: Field[] = [
+  return <FieldGroup title="Source" fields={fields} showEmpty />;
+}
+
+function LinkageGroup({ sample }: { sample: Sample }) {
+  const contractsById = useStore((s) => s.contractsById);
+  const fields: Field[] = [
     { label: "Contract", value: sample.contractId ? (contractsById.get(sample.contractId)?.number ?? "—") : "" },
     { label: "Pay Item", value: sample.payItemNumber ?? "", type: "mono" },
     { label: "Inventory", value: sample.inventoryItemId ? "Linked" : "" },
   ];
-  const dates: Field[] = [
+  return <FieldGroup title="Linkage" fields={fields} showEmpty />;
+}
+
+function DatesGroup({ sample }: { sample: Sample }) {
+  const fields: Field[] = [
     { label: "Received Date", value: sample.receivedDate, type: "date" },
     { label: "Started Date", value: sample.startedDate, type: "date" },
     { label: "Completed Date", value: sample.completedDate, type: "date" },
   ];
-  const approval: Field[] = [
+  return <FieldGroup title="Dates" fields={fields} showEmpty />;
+}
+
+function ReviewGroup({ sample }: { sample: Sample }) {
+  const fields: Field[] = [
     { label: "Approver Name", value: sample.approverName },
     { label: "Approved Date", value: sample.approvedDate, type: "date" },
     { label: "Note", value: sample.note },
   ];
-
-  return (
-    <div className="space-y-3">
-      <FieldGroup title="Identification" fields={id} showEmpty />
-      <FieldGroup title="Material" fields={material} />
-      <FieldGroup title="Source" fields={source} />
-      <FieldGroup title="Spec" fields={spec} />
-      <FieldGroup title="Linkage" fields={linkage} />
-      <FieldGroup title="Dates" fields={dates} defaultOpen={false} />
-      <FieldGroup title="Approval" fields={approval} defaultOpen={false} />
-    </div>
-  );
+  return <FieldGroup title="Review" fields={fields} showEmpty />;
 }
 
-function TestsTab({ sample, tests }: { sample: Sample; tests: Test[] }) {
+function TestsSection({ sample, tests }: { sample: Sample; tests: Test[] }) {
   const canTest = useStore((s) => s.can("enter_tests"));
   const canValidate = useStore((s) => s.can("validate_test"));
   const currentUser = useStore((s) => s.currentUser);
@@ -246,9 +247,9 @@ function TestsTab({ sample, tests }: { sample: Sample; tests: Test[] }) {
   ];
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h3 className="mb-2 text-sm font-semibold text-ink">Test records</h3>
+    <div className="rounded-card border border-line bg-surface">
+      <div className="border-b border-line px-4 py-2.5 text-sm font-semibold text-ink">Tests</div>
+      <div className="space-y-4 px-4 py-4">
         <EditableRowTable
           rows={tests}
           columns={columns}
@@ -259,55 +260,38 @@ function TestsTab({ sample, tests }: { sample: Sample; tests: Test[] }) {
           readOnly={!canTest}
           emptyMessage="No tests recorded yet."
         />
-        <p className="mt-1 text-xs text-ink-faint">
+        <p className="text-xs text-ink-faint">
           Add more than one series to the same sample. Validate is a separate, role-gated step.
         </p>
-      </div>
 
-      {tests.length > 1 && fieldDefs.length > 0 && (
-        <div>
-          <h3 className="mb-2 text-sm font-semibold text-ink">Compare series</h3>
-          <div className="overflow-x-auto rounded-lg border border-line">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="bg-canvas text-left text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
-                  <th className="px-3 py-2">Field</th>
-                  {tests.map((t) => (
-                    <th key={t.id} className="px-3 py-2 text-right">Series #{t.series}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {fieldDefs.map((fd) => (
-                  <tr key={fd.key} className="border-t border-line/70">
-                    <td className="px-3 py-1.5 text-ink-soft">{fd.label}</td>
+        {tests.length > 1 && fieldDefs.length > 0 && (
+          <div>
+            <h3 className="mb-2 text-sm font-semibold text-ink">Compare series</h3>
+            <div className="overflow-x-auto rounded-lg border border-line">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="bg-canvas text-left text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+                    <th className="px-3 py-2">Field</th>
                     {tests.map((t) => (
-                      <td key={t.id} className="px-3 py-1.5 text-right tabular-nums text-ink">
-                        {t.fields.find((x) => x.key === fd.key)?.value || "—"}
-                      </td>
+                      <th key={t.id} className="px-3 py-2 text-right">Series #{t.series}</th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {fieldDefs.map((fd) => (
+                    <tr key={fd.key} className="border-t border-line/70">
+                      <td className="px-3 py-1.5 text-ink-soft">{fd.label}</td>
+                      {tests.map((t) => (
+                        <td key={t.id} className="px-3 py-1.5 text-right tabular-nums text-ink">
+                          {t.fields.find((x) => x.key === fd.key)?.value || "—"}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function DocumentsTab({ sample }: { sample: Sample }) {
-  return (
-    <div className="space-y-3">
-      <p className="text-sm text-ink-soft">
-        Lab paperwork and sample labels. Real upload/download arrives with Storage in brief 12.
-      </p>
-      <div className="rounded-lg border border-line p-4 text-sm">
-        {sample.hasDocument ? (
-          <span className="flex items-center gap-2 text-ink">📎 Lab document on file</span>
-        ) : (
-          <span className="text-ink-soft">No documents to display.</span>
         )}
       </div>
     </div>

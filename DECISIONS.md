@@ -121,3 +121,39 @@ PAINT→Paint, etc.) to families; numeric/unmapped categories (175, 215, …) fa
 material `family` string is narrowed through a validating `FAMILY_BY_NAME` lookup (unknown →
 "Other"), so there are no `as` casts at the import boundary and dirty family values can't break
 the build. The only data-layer files touched are `reference.ts`, `generate.ts`, and `tsconfig`.
+
+### D19 — Surfaced materials restricted to the inspector's real 9 codes
+`my_materials_filter.json` lists the 9 codes the inspector actually inspects. `reference.ts`
+now keeps the full 1,481-code master as `ALL_MATERIALS` but exports `MATERIALS` = just those 9,
+each resolved from the real master by code (all 9 were found; a missing code would be
+synthesized from the filter name with family inferred by keyword). `MATERIALS` drives the
+Material Definition list, **every** material picker, and the seed — so only these 9 surface
+anywhere. All 9 sample vendor numbers already exist in `vendors.json`, so no vendors were
+fabricated.
+
+### D20 — Real projects + real samples replace synthetic samples; synthetic inventory kept
+The 11 real contracts (`my_projects.json`) are added to the world keyed by number
+(`ct_real_<number>`), minimal/empty for the user to fill later. The 32 real samples
+(`my_samples.json`) become the **only** samples — synthetic sample/test generation
+(`generateSamplesAndTests`) was removed; `tests` loads empty (the source carries no lab
+records). Fresh `sampleIdentifier` (`SMP-1000NN`) + `testId` (`500NN`) are generated since the
+source leaves them blank; special IDs / batch-lot-heat are used verbatim. The 200 synthetic
+contracts + 8,000 inventory items are **kept** — this task scoped data replacement to materials
+and the samples view; the inventory/inbox hero screens still demonstrate at scale.
+
+### D21 — Inspector roster + name-only inspector; Samples list scoped to current inspector
+Default user is now **Gerardo Sanchez II** (Inspector), the real sampler. The 6 reviewers seen
+in the data (Breanna Heffren, Jared Davison, John Reeves, William Snyder, Peter Litchfield,
+Kande Senavirathna) are seeded as additional Inspector users with no samples. No inspector
+**number** exists in the data, so none is stored or shown. The Samples list filters to the
+current inspector's own samples (by name) for Inspector roles, so only Gerardo's 32 appear;
+Documentation/Admin still see everything in scope.
+
+### D22 — Sample approval is right-click-only; `approve_sample` allows Inspector
+Approve / Approve as Exception / Reject moved off the detail page and the toolbar entirely;
+the only path is a right-click `ContextMenu` on a samples-list row (Exception/Reject prompt for
+a note; "Approve as Exception" records the reason in the note and keeps status `Approved`,
+since `SampleStatus` has no exception state). `approve_sample` now includes `Inspector` so the
+real single-inspector user can action their own samples. The sample detail is rebuilt as one
+scrollable page (no tabs): Identification · Material · Source · Linkage · Dates · Review, with
+the Tests records inline so validation stays where it was.

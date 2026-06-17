@@ -13,12 +13,15 @@ export function FieldGroup({
   showEmpty = false,
   defaultOpen = true,
   columns = 3,
+  children,
 }: {
   title: string;
   fields: Field[];
   showEmpty?: boolean;
   defaultOpen?: boolean;
   columns?: 2 | 3 | 4;
+  /** Optional extra content rendered (full-width) below the field grid. */
+  children?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const visible = fields.filter((f) => showEmpty || !isEmptyValue(f.value));
@@ -57,9 +60,10 @@ export function FieldGroup({
               </div>
             </div>
           ))}
-          {visible.length === 0 && (
+          {visible.length === 0 && !children && (
             <p className="text-sm text-ink-faint">All fields in this section are empty.</p>
           )}
+          {children && <div className="col-span-full">{children}</div>}
         </div>
       )}
     </section>

@@ -41,7 +41,38 @@ export function buildDemoUsers(contracts: Contract[], items: InventoryItem[]): U
   const reContracts = byActivity.slice(0, 8).map((c) => c.id);
   const contractorContracts = byActivity.slice(0, 2).map((c) => c.id);
 
+  // The real projects (my_projects.json) — the primary inspector + the rest of
+  // the inspector roster carry these so the 32 real samples are in scope.
+  const realContractIds = contracts.filter((c) => c.id.startsWith("ct_real_")).map((c) => c.id);
+
+  // The 6 other inspectors on the roster (no samples loaded for them). Names are
+  // the real reviewers/approvers seen in the sample data.
+  const OTHER_INSPECTORS = [
+    "Breanna Heffren",
+    "Jared Davison",
+    "John Reeves",
+    "William Snyder",
+    "Peter Litchfield",
+    "Kande Senavirathna",
+  ];
+  const otherInspectorUsers: User[] = OTHER_INSPECTORS.map((name, i) => ({
+    id: `u_insp_${i + 2}`,
+    name,
+    roles: ["Inspector"],
+    districtIds: [],
+    contractIds: realContractIds,
+  }));
+
   return [
+    // The primary, default user — the real inspector whose 32 samples are loaded.
+    {
+      id: "u_gerardo",
+      name: "Gerardo Sanchez II",
+      roles: ["Inspector"],
+      districtIds: [],
+      contractIds: realContractIds,
+    },
+    ...otherInspectorUsers,
     {
       id: "u_admin",
       name: "D. Schwartz",
@@ -80,4 +111,4 @@ export function buildDemoUsers(contracts: Contract[], items: InventoryItem[]): U
   ];
 }
 
-export const DEFAULT_USER_ID = "u_doc";
+export const DEFAULT_USER_ID = "u_gerardo";

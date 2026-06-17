@@ -3,10 +3,11 @@
  * Add Sample (Log In Samples) form, and a row-click detail drawer (with the
  * Tests tab from brief 04). Lives under the global Materials nav.
  */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useStore } from "@/store/store";
 import { DataGrid } from "@/components/ui/DataGrid";
+import { ContextMenu, type MenuItem } from "@/components/ui/ContextMenu";
 import { sampleColumns, type SampleRow } from "@/components/samples/columns";
 import { SampleForm } from "@/components/samples/SampleForm";
 import { SampleDetailDrawer } from "@/components/samples/SampleDetailDrawer";
@@ -19,19 +20,55 @@ export function SamplesPage() {
   const samplesList = useStore((s) => s.samplesList);
   const visibleIds = useStore((s) => s.visibleIds);
   const contractsById = useStore((s) => s.contractsById);
+  const currentUser = useStore((s) => s.currentUser);
   const canCreate = useStore((s) => s.can("create_sample"));
+  const approveSample = useStore((s) => s.approveSample);
   const pushToast = useStore((s) => s.pushToast);
+  const [menu, setMenu] = useState<{ x: number; y: number; row: SampleRow } | null>(null);
+
+  // The Samples list shows only the current inspector's own samples. Documentation
+  // / Admin (cross-contract reviewers) instead see everything in their scope.
+  const inspectorView =
+    !!currentUser?.roles.includes("Inspector") &&
+    !currentUser.roles.includes("Documentation") &&
+    !currentUser.roles.includes("DistrictAdmin");
 
   const rows = useMemo<SampleRow[]>(
     () =>
       samplesList
-        .filter((s) => s.contractId === null || visibleIds.has(s.contractId))
+        .filter((s) =>
+          inspectorView
+            ? s.inspector === currentUser?.name
+            : s.contractId === null || visibleIds.has(s.contractId),
+        )
         .map((s) => ({
           ...s,
           contractNumber: s.contractId ? (contractsById.get(s.contractId)?.number ?? "") : "",
         })),
-    [samplesList, visibleIds, contractsById],
+    [samplesList, visibleIds, contractsById, inspectorView, currentUser],
   );
+
+  // Approval is right-click only (no buttons in the toolbar or the detail page).
+  const menuItems = (row: SampleRow): MenuItem[] => [
+    { label: "Open details", onClick: () => navigate(`/samples/${row.id}`) },
+    { separator: true, label: "" },
+    { label: "Approve", onClick: () => approveSample(row.id, { approve: true }) },
+    {
+      label: "Approve as Exception",
+      onClick: () => {
+        const note = window.prompt("Reason for exception:")?.trim();
+        if (note) approveSample(row.id, { approve: true, note: `Approved as Exception — ${note}` });
+      },
+    },
+    {
+      label: "Reject",
+      danger: true,
+      onClick: () => {
+        const note = window.prompt("Reason for rejection:")?.trim();
+        if (note) approveSample(row.id, { approve: false, note });
+      },
+    },
+  ];
 
   const isNew = params.get("new") === "1";
   const closeForm = () => {
@@ -83,9 +120,17 @@ export function SamplesPage() {
             `${r.sampleIdentifier} ${r.testId} ${r.materialCode} ${r.materialName} ${r.producerName} ${r.supplierName} ${r.inspector} ${r.contractNumber}`
           }
           onRowClick={(r) => navigate(`/samples/${r.id}`)}
+          onRowContextMenu={(e, r) => {
+            e.preventDefault();
+            setMenu({ x: e.clientX, y: e.clientY, row: r });
+          }}
           emptyMessage="No samples to display."
         />
       </div>
+
+      {menu && (
+        <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.row)} onClose={() => setMenu(null)} />
+      )}
 
       {isNew && (
         <SampleForm

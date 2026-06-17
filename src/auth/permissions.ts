@@ -29,7 +29,7 @@ const MATRIX: Record<Capability, Role[]> = {
   create_sample: ["Inspector", "ResidentEngineer", "DistrictAdmin"],
   enter_tests: ["Inspector", "DistrictAdmin"],
   validate_test: ["Inspector", "DistrictAdmin"],
-  approve_sample: ["Documentation", "DistrictAdmin"],
+  approve_sample: ["Inspector", "Documentation", "DistrictAdmin"],
   create_inventory: ["Inspector", "ResidentEngineer", "DistrictAdmin"],
   upload_eoi: ["Inspector", "ResidentEngineer", "DistrictAdmin"],
   assign_pay_items: ["ResidentEngineer", "DistrictAdmin"],
