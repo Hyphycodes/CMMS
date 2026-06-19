@@ -10,6 +10,13 @@ import { QuantityBookPage } from "@/pages/QuantityBookPage";
 import { PayEstimatePage } from "@/pages/PayEstimatePage";
 import { AuthorizationsPage } from "@/pages/AuthorizationsPage";
 import { MaterialDefinitionPage, VendorsPage, MixDesignPage } from "@/pages/MaterialsPages";
+import {
+  MaterialsInventoryPage,
+  MaterialsAcceptancePage,
+  InspectorsPage,
+  LaboratoryPage,
+  DescriptionsPage,
+} from "@/pages/MaterialsMenuPages";
 
 export const router = createBrowserRouter([
   {
@@ -23,6 +30,11 @@ export const router = createBrowserRouter([
       { path: "materials/definitions", element: <MaterialDefinitionPage /> },
       { path: "materials/vendors", element: <VendorsPage /> },
       { path: "materials/mix-designs", element: <MixDesignPage /> },
+      { path: "materials/inventory", element: <MaterialsInventoryPage /> },
+      { path: "materials/acceptance", element: <MaterialsAcceptancePage /> },
+      { path: "materials/inspectors", element: <InspectorsPage /> },
+      { path: "materials/laboratory", element: <LaboratoryPage /> },
+      { path: "materials/descriptions", element: <DescriptionsPage /> },
       { path: "contract/:contractId", element: <ContractSummaryPage /> },
       // Inventory grid; the optional :itemId opens the detail drawer over it.
       { path: "contract/:contractId/inventory", element: <InventoryPage /> },

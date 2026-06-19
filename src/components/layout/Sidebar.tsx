@@ -12,6 +12,8 @@ import {
   TruckIcon,
   TagIcon,
   BeakerIcon,
+  InboxIcon,
+  UsersIcon,
   XIcon,
 } from "@/components/ui/icons";
 
@@ -24,11 +26,16 @@ const TREE_NODES = [
   { key: "authorizations", label: "Authorizations", Icon: AuthIcon },
 ] as const;
 
-// Global, contract-independent surfaces (briefs 03 + 11).
+// Global, contract-independent surfaces (briefs 03 + 11 + 20).
 const MATERIALS_NODES = [
+  { to: "/materials/inventory", label: "Inventory (search)", Icon: BoxesIcon },
+  { to: "/materials/acceptance", label: "Acceptance", Icon: InboxIcon },
   { to: "/samples", label: "Samples", Icon: FlaskIcon },
   { to: "/materials/definitions", label: "Material Definition", Icon: TagIcon },
+  { to: "/materials/descriptions", label: "Descriptions", Icon: TagIcon },
   { to: "/materials/vendors", label: "Vendors", Icon: TruckIcon },
+  { to: "/materials/inspectors", label: "Inspectors", Icon: UsersIcon },
+  { to: "/materials/laboratory", label: "Laboratory", Icon: BeakerIcon },
   { to: "/materials/mix-designs", label: "Mix Design", Icon: BeakerIcon },
 ] as const;
 
