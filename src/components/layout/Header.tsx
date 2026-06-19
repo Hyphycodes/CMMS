@@ -24,7 +24,7 @@ const MENU_GROUPS: { heading: string; links: { to: string; label: string }[] }[]
       { to: "/materials/mix-designs", label: "Mix Design" },
     ],
   },
-  { heading: "Reporting", links: [{ to: "/reports", label: "Reports" }, { to: "/import-log", label: "Import Log" }] },
+  { heading: "Reporting", links: [{ to: "/reports", label: "Reports" }, { to: "/reliability", label: "Vendor Reliability" }, { to: "/reconcile", label: "Reconcile" }, { to: "/import-log", label: "Import Log" }] },
   { heading: "Maintenance", links: [{ to: "/admin/employees", label: "Employees" }, { to: "/setup", label: "New Contract" }] },
 ];
 

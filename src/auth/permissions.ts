@@ -3,7 +3,7 @@
  * reflected in the UI (controls hide/disable with a reason). This same matrix
  * becomes the RLS policy fixture in brief 12 — keep them in lockstep.
  */
-import type { Contract, Role, User } from "@/domain/types";
+import type { Contract, Party, Role, User } from "@/domain/types";
 
 export type Capability =
   | "see_all_district_contracts"
@@ -47,6 +47,28 @@ export function can(user: User | undefined, cap: Capability): boolean {
   if (!user) return false;
   const allowed = MATRIX[cap];
   return user.roles.some((r) => allowed.includes(r));
+}
+
+/**
+ * X5 — inter-party groundwork. Each external party gets a narrow capability
+ * slice (contractor: placements; producer/supplier: certs/EOI docs; lab: test
+ * results). IDOT is unrestricted ("all"), so today (IDOT-only) `canParty` ≡ `can`
+ * — this is dormant scaffolding, enforced for real by RLS (P5) when parties are
+ * invited in. Not yet swapped into the store gates (IDOT-only build).
+ */
+export const PARTY_CAPABILITIES: Record<Party, Capability[] | "all"> = {
+  IDOT: "all",
+  Contractor: ["author_contract"], // submit placements
+  Producer: ["upload_eoi"], // attach certs / EOI docs
+  Supplier: ["upload_eoi"],
+  Lab: ["enter_tests", "validate_test"], // push test results
+};
+
+export function canParty(user: User | undefined, cap: Capability): boolean {
+  if (!user) return false;
+  const slice = PARTY_CAPABILITIES[user.party];
+  const allowedByParty = slice === "all" || slice.includes(cap);
+  return allowedByParty && can(user, cap);
 }
 
 /** Human-friendly reason for a disabled control (keeps disabled legible). */

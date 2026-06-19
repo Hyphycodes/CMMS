@@ -8,6 +8,8 @@ import { ReportsPage } from "@/pages/ReportsPage";
 import { EmployeesPage } from "@/pages/admin/EmployeesPage";
 import { ContractSetupWizard } from "@/pages/ContractSetupWizard";
 import { RadarPage } from "@/pages/RadarPage";
+import { ReliabilityPage } from "@/pages/ReliabilityPage";
+import { ReconcilePage } from "@/pages/ReconcilePage";
 import { ContractSummaryPage } from "@/pages/ContractSummaryPage";
 import { InventoryPage } from "@/pages/InventoryPage";
 import { SamplesPage } from "@/pages/SamplesPage";
@@ -36,6 +38,8 @@ export const router = createBrowserRouter([
       { path: "radar", element: <RadarPage /> },
       { path: "import-log", element: <ImportLogPage /> },
       { path: "reports", element: <ReportsPage /> },
+      { path: "reliability", element: <ReliabilityPage /> },
+      { path: "reconcile", element: <ReconcilePage /> },
       { path: "admin/employees", element: <EmployeesPage /> },
       { path: "setup", element: <ContractSetupWizard /> },
       { path: "samples", element: <SamplesPage /> },
