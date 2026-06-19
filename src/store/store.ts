@@ -30,6 +30,10 @@ import type {
   MixDesign,
   Provenance,
   StoredFileRef,
+  FinalReview,
+  ContractSummary,
+  MaterialAllowanceLine,
+  QmpPackage,
 } from "@/domain/types";
 import type { FileScope } from "@/data/dataSource";
 import { lineAmount, sumAmounts } from "@/domain/money";
@@ -157,6 +161,18 @@ interface State {
   addSubcontractor(contractId: string, row: SubcontractorRow): void;
   addProjectDocument(contractId: string, row: ProjectDocumentRow): void;
 
+  // Final Review closeout tracker (brief 18) + Summary working fields (brief 19)
+  setFinalReview(contractId: string, finalReview: FinalReview): void;
+  setContractSummary(contractId: string, patch: Partial<ContractSummary>): void;
+
+  // Material Allowance (M1) + QMP (M2)
+  materialAllowancesList: MaterialAllowanceLine[];
+  qmpPackagesList: QmpPackage[];
+  materialAllowancesForContract(contractId: string): MaterialAllowanceLine[];
+  setMaterialAllowances(contractId: string, lines: MaterialAllowanceLine[]): void;
+  qmpForContract(contractId: string): QmpPackage[];
+  upsertQmpPackage(pkg: QmpPackage): void;
+
   // diary (brief 07)
   saveDiaryDay(day: DiaryDay): void;
   signDiaryDay(contractId: string, date: string): void;
@@ -213,6 +229,8 @@ export const useStore = create<State>((set, get) => ({
   payEstimatesList: [],
   authorizationsList: [],
   mixDesignsList: [],
+  materialAllowancesList: [],
+  qmpPackagesList: [],
 
   samplesList: [],
   testsList: [],
@@ -283,6 +301,8 @@ export const useStore = create<State>((set, get) => ({
         payEstimatesList: world.payEstimates,
         authorizationsList: world.authorizations,
         mixDesignsList: world.mixDesigns,
+        materialAllowancesList: world.materialAllowances,
+        qmpPackagesList: world.qmpPackages,
         samplesList: world.samples,
         testsList: world.tests,
         testTemplates: world.testTemplates,
@@ -641,7 +661,84 @@ export const useStore = create<State>((set, get) => ({
       return;
     }
     updateContractInMemory(get, set, contractId, (c) => ({ ...c, projectDocuments: [...c.projectDocuments, row] }));
-    get().pushToast("info", "Document added (file upload + storage lands in brief 12).");
+    get().pushToast("info", "Document record added.");
+  },
+
+  setFinalReview(contractId, finalReview) {
+    if (!canDo(get().currentUser, "author_contract")) {
+      get().pushToast("error", "Your role can't edit Final Review.");
+      return;
+    }
+    const prev = get().contract(contractId)?.finalReview;
+    const stampedFr = stamped(get, finalReview, !prev?.createdAt);
+    updateContractInMemory(get, set, contractId, (c) => ({ ...c, finalReview: stampedFr }));
+    void persist(
+      get,
+      set,
+      async (ds) => ds.persistFinalReview(contractId, stampedFr),
+      () => {
+        if (prev) updateContractInMemory(get, set, contractId, (c) => ({ ...c, finalReview: prev }));
+      },
+      "Couldn't save Final Review",
+    );
+  },
+
+  setContractSummary(contractId, patch) {
+    if (!canDo(get().currentUser, "author_contract")) {
+      get().pushToast("error", "Your role can't edit the contract Summary.");
+      return;
+    }
+    const prev = get().contract(contractId)?.summary;
+    updateContractInMemory(get, set, contractId, (c) => ({ ...c, summary: { ...c.summary, ...patch } }));
+    void persist(
+      get,
+      set,
+      async (ds) => ds.persistContractSummary(contractId, patch),
+      () => {
+        if (prev) updateContractInMemory(get, set, contractId, (c) => ({ ...c, summary: prev }));
+      },
+      "Couldn't save Summary",
+    );
+  },
+
+  materialAllowancesForContract: (contractId) => get().materialAllowancesList.filter((l) => l.contractId === contractId),
+
+  setMaterialAllowances(contractId, lines) {
+    if (!canDo(get().currentUser, "author_contract")) {
+      get().pushToast("error", "Your role can't edit Material Allowance.");
+      return;
+    }
+    const stampedLines = lines.map((l) => stamped(get, l, !l.createdAt));
+    const others = get().materialAllowancesList.filter((l) => l.contractId !== contractId);
+    const prev = get().materialAllowancesList;
+    set({ materialAllowancesList: [...others, ...stampedLines] });
+    void persist(
+      get,
+      set,
+      async (ds) => ds.persistMaterialAllowance(contractId, stampedLines),
+      () => set({ materialAllowancesList: prev }),
+      "Couldn't save Material Allowance",
+    );
+  },
+
+  qmpForContract: (contractId) => get().qmpPackagesList.filter((q) => q.contractId === contractId),
+
+  upsertQmpPackage(pkg) {
+    const list = get().qmpPackagesList;
+    const idx = list.findIndex((q) => q.id === pkg.id);
+    const prev = idx >= 0 ? list[idx] : null;
+    const stampedPkg = stamped(get, pkg, idx < 0);
+    set({ qmpPackagesList: idx >= 0 ? list.map((q) => (q.id === pkg.id ? stampedPkg : q)) : [...list, stampedPkg] });
+    void persist(
+      get,
+      set,
+      async (ds) => ds.persistQmpPackage(stampedPkg),
+      () => {
+        const cur = get().qmpPackagesList;
+        set({ qmpPackagesList: prev ? cur.map((q) => (q.id === pkg.id ? prev : q)) : cur.filter((q) => q.id !== pkg.id) });
+      },
+      "Couldn't save QMP package",
+    );
   },
 
   saveDiaryDay(day) {

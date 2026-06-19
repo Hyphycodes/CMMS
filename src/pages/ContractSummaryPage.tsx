@@ -2,12 +2,13 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useStore } from "@/store/store";
-import type { Contract, ContractSummary, ProjectDocumentRow, SubcontractorRow } from "@/domain/types";
+import type { Contract, ContractSummary, ProjectDocumentRow, SubcontractorRow, FinalReview, PerformancePeriodRow } from "@/domain/types";
 import type { PillTone } from "@/domain/status";
 import { Pill } from "@/components/ui/Pill";
 import { FieldGroup } from "@/components/ui/FieldGroup";
 import { FileDrop } from "@/components/ui/FileDrop";
 import { DataGrid } from "@/components/ui/DataGrid";
+import { EditText, EditNumber, EditDate } from "@/components/ui/EditableRowTable";
 import { IntelligentSearch } from "@/components/ui/IntelligentSearch";
 import { CONTRACTORS, DESIGNER_FIRMS } from "@/data/reference";
 import type { Field } from "@/lib/fields";
@@ -409,101 +410,96 @@ function SubcontractingTab({ contract }: { contract: Contract }) {
 // --- Final Review ----------------------------------------------------------
 
 function FinalReviewTab({ contract }: { contract: Contract }) {
-  const [showEmpty, setShowEmpty] = useState(true);
+  const setFinalReview = useStore((s) => s.setFinalReview);
+  const canEdit = useStore((s) => s.can("author_contract"));
   const fr = contract.finalReview;
   const d = fr.finalFromDistrict;
   const dr = fr.documentationReview;
   const mr = fr.materialsReview;
   const dbe = fr.dbeCloseOut;
 
-  const finalFromDistrict: Field[] = [
-    { label: "Deadline for Final FRC Bills", value: d.deadlineForFinalFrcBills, type: "date" },
-    { label: "Final Inspection Letters", value: d.finalInspectionLetters, type: "date" },
-    { label: "All Pay Items Final", value: d.allPayItemsFinal, type: "bool" },
-    { label: "FQ Sent", value: d.fqSent, type: "date" },
-    { label: "FQ Agree", value: d.fqAgree, type: "date" },
-    { label: "FQ Certified", value: d.fqCertified, type: "date" },
-    { label: "FQ Received", value: d.fqReceived, type: "date" },
-    { label: "Challenged FQ", value: d.challengedFq, type: "bool" },
-    { label: "Intent to File Claim", value: d.intentToFileClaim, type: "bool" },
-    { label: "Claim L1", value: d.claimL1, type: "date" },
-    { label: "Claim L2", value: d.claimL2, type: "date" },
-    { label: "Claim Resolved", value: d.claimResolved, type: "date" },
-    { label: "Qty Adjustment Letter", value: d.qtyAdjustmentLetter, type: "date" },
-    { label: "OPs Signoff", value: d.opsSignoff, type: "date" },
-    { label: "Final Inspection BC-71", value: d.finalInspectionBc71, type: "date" },
-    { label: "FPE BC 111", value: d.fpeBc111, type: "date" },
-    { label: "Local Agency Cert BC 608", value: d.localAgencyCertBc608, type: "date" },
-    { label: "Records/Payroll Retention", value: d.recordsPayrollRetention, type: "date" },
-    { label: "Records Location", value: d.recordsLocation },
-    { label: "State Completion Notice", value: d.stateCompletionNotice, type: "date" },
-    { label: "For CO to Review", value: d.forCoToReview, type: "bool" },
-    { label: "Project Control Manager", value: d.projectControlManager },
-  ];
-  const documentationReview: Field[] = [
-    { label: "Records Turned In", value: dr.recordsTurnedIn, type: "date" },
-    { label: "Audit Start", value: dr.auditStart, type: "date" },
-    { label: "# Issues", value: dr.numIssues, type: "number" },
-    { label: "Audit Given to Resident", value: dr.auditGivenToResident, type: "date" },
-    { label: "Corrections Due", value: dr.correctionsDue, type: "date" },
-    { label: "Corrections Submitted", value: dr.correctionsSubmitted, type: "date" },
-    { label: "Audit Finalized", value: dr.auditFinalized, type: "date" },
-    { label: "Reviewer", value: dr.reviewer },
-    { label: "Progress Review", value: dr.progressReview },
-    { label: "Remarks", value: dr.remarks },
-  ];
-  const materialsReview: Field[] = [
-    { label: "# Issues", value: mr.numIssues, type: "number" },
-    { label: "Exceptions", value: mr.exceptions, type: "number" },
-    { label: "Review Start", value: mr.reviewStart, type: "date" },
-    { label: "Audit Given", value: mr.auditGiven, type: "date" },
-    { label: "Corrections Due", value: mr.correctionsDue, type: "date" },
-    { label: "PCC Signoff Sent", value: mr.pccSignoffSent, type: "date" },
-    { label: "PCC Signoff Rcvd", value: mr.pccSignoffRcvd, type: "date" },
-    { label: "HMA Signoff Sent", value: mr.hmaSignoffSent, type: "date" },
-    { label: "HMA Signoff Rcvd", value: mr.hmaSignoffRcvd, type: "date" },
-    { label: "Soils Signoff Sent", value: mr.soilsSignoffSent, type: "date" },
-    { label: "Soils Signoff Rcvd", value: mr.soilsSignoffRcvd, type: "date" },
-    { label: "Materials Cert Date", value: mr.materialsCertDate, type: "date" },
-    { label: "Exception Letter Date", value: mr.exceptionLetterDate, type: "date" },
-    { label: "Reviewer", value: mr.reviewer },
-    { label: "Remarks", value: mr.remarks },
-  ];
-  const dbeCloseOut: Field[] = [
-    { label: "Commitment %", value: dbe.commitmentPct, type: "percent" },
-    { label: "BC 2115", value: dbe.bc2115, type: "bool" },
-    { label: "All SBE 2115", value: dbe.allSbe2115, type: "bool" },
-    { label: "Approved", value: dbe.approved, type: "bool" },
-    { label: "Goal Met", value: dbe.goalMet, type: "bool" },
-    { label: "DBE Final Doc SBE 2028", value: dbe.dbeFinalDocSbe2028, type: "bool" },
-    { label: "Waiver Requested", value: dbe.waiverRequested, type: "bool" },
-    { label: "Waiver Granted", value: dbe.waiverGranted, type: "bool" },
-    { label: "2028 Packet Approved", value: dbe.packet2028Approved, type: "bool" },
-    { label: "EEO Remarks", value: dbe.eeoRemarks },
-    { label: "EEO Representative", value: dbe.eeoRepresentative },
-  ];
+  const update = (next: FinalReview) => setFinalReview(contract.id, next);
+  const patchD = (p: Partial<typeof d>) => update({ ...fr, finalFromDistrict: { ...d, ...p } });
+  const patchDr = (p: Partial<typeof dr>) => update({ ...fr, documentationReview: { ...dr, ...p } });
+  const patchMr = (p: Partial<typeof mr>) => update({ ...fr, materialsReview: { ...mr, ...p } });
+  const patchDbe = (p: Partial<typeof dbe>) => update({ ...fr, dbeCloseOut: { ...dbe, ...p } });
+  const patchPP = (rows: PerformancePeriodRow[]) => update({ ...fr, performancePeriod: rows });
+  const editPP = (i: number, patch: Partial<PerformancePeriodRow>) => patchPP(fr.performancePeriod.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  const addPP = () =>
+    patchPP([...fr.performancePeriod, { type: "", required: "", yearPlaced: "", inspectionNeeded: false, repairsNeeded: false, letterSent: null, repairsMade: false, bond: "", approvedLetterSent: null }]);
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-ink-faint">Close-out dashboard</span>
-        <label className="flex items-center gap-2 text-sm text-ink-soft">
-          <input type="checkbox" className="h-4 w-4 cursor-pointer accent-accent" checked={showEmpty} onChange={(e) => setShowEmpty(e.target.checked)} />
-          Show empty fields
-        </label>
-      </div>
-      <FieldGroup title="Final from District" fields={finalFromDistrict} showEmpty={showEmpty} collapsible={false} />
-      <FieldGroup title="Documentation Review" fields={documentationReview} showEmpty={showEmpty} collapsible={false} />
-      <FieldGroup title="Materials Review" fields={materialsReview} showEmpty={showEmpty} collapsible={false} />
+    <div className="space-y-4">
+      <p className="text-xs text-ink-faint">Close-out tracker — the RE/inspector's working closeout form. Every field edits and persists.</p>
+
+      <ESection title="Final from District">
+        <EDate label="Deadline for Final FRC Bills" value={d.deadlineForFinalFrcBills} disabled={!canEdit} onChange={(v) => patchD({ deadlineForFinalFrcBills: v })} />
+        <EDate label="Final Inspection Letters" value={d.finalInspectionLetters} disabled={!canEdit} onChange={(v) => patchD({ finalInspectionLetters: v })} />
+        <ECheckField label="All Pay Items are Final" checked={d.allPayItemsFinal} disabled={!canEdit} onChange={(v) => patchD({ allPayItemsFinal: v })} />
+        <EDate label="FQ Sent" value={d.fqSent} disabled={!canEdit} onChange={(v) => patchD({ fqSent: v })} />
+        <EDate label="Agree to FQ" value={d.fqAgree} disabled={!canEdit} onChange={(v) => patchD({ fqAgree: v })} />
+        <EDate label="Certified FQ" value={d.fqCertified} disabled={!canEdit} onChange={(v) => patchD({ fqCertified: v })} />
+        <EDate label="FQ Received" value={d.fqReceived} disabled={!canEdit} onChange={(v) => patchD({ fqReceived: v })} />
+        <ECheckField label="Challenged FQ" checked={d.challengedFq} disabled={!canEdit} onChange={(v) => patchD({ challengedFq: v })} />
+        <ECheckField label="Intent to File Claim" checked={d.intentToFileClaim} disabled={!canEdit} onChange={(v) => patchD({ intentToFileClaim: v })} />
+        <EDate label="Claim Submitted L1" value={d.claimL1} disabled={!canEdit} onChange={(v) => patchD({ claimL1: v })} />
+        <EDate label="Claim Submitted L2" value={d.claimL2} disabled={!canEdit} onChange={(v) => patchD({ claimL2: v })} />
+        <EDate label="Claim Resolved" value={d.claimResolved} disabled={!canEdit} onChange={(v) => patchD({ claimResolved: v })} />
+        <EDate label="Qty Adjustment Letter" value={d.qtyAdjustmentLetter} disabled={!canEdit} onChange={(v) => patchD({ qtyAdjustmentLetter: v })} />
+        <EDate label="OPs Signoff" value={d.opsSignoff} disabled={!canEdit} onChange={(v) => patchD({ opsSignoff: v })} />
+        <EDate label="Final Inspection BC-71" value={d.finalInspectionBc71} disabled={!canEdit} onChange={(v) => patchD({ finalInspectionBc71: v })} />
+        <EDate label="Checklist FPE BC-111" value={d.fpeBc111} disabled={!canEdit} onChange={(v) => patchD({ fpeBc111: v })} />
+        <EDate label="Local Agency Cert BC-608" value={d.localAgencyCertBc608} disabled={!canEdit} onChange={(v) => patchD({ localAgencyCertBc608: v })} />
+        <EDate label="Records/Payroll Retention" value={d.recordsPayrollRetention} disabled={!canEdit} onChange={(v) => patchD({ recordsPayrollRetention: v })} />
+        <ETextField label="Records Location" value={d.recordsLocation} disabled={!canEdit} onChange={(v) => patchD({ recordsLocation: v })} />
+        <EDate label="State Completion Notice" value={d.stateCompletionNotice} disabled={!canEdit} onChange={(v) => patchD({ stateCompletionNotice: v })} />
+        <ECheckField label="For CO to Review" checked={d.forCoToReview} disabled={!canEdit} onChange={(v) => patchD({ forCoToReview: v })} />
+        <ETextField label="Project Control Manager" value={d.projectControlManager} disabled={!canEdit} onChange={(v) => patchD({ projectControlManager: v })} />
+      </ESection>
+
+      <ESection title="Documentation Review">
+        <EDate label="Records Turned In" value={dr.recordsTurnedIn} disabled={!canEdit} onChange={(v) => patchDr({ recordsTurnedIn: v })} />
+        <EDate label="Audit Start" value={dr.auditStart} disabled={!canEdit} onChange={(v) => patchDr({ auditStart: v })} />
+        <ENumberField label="Number of Issues" value={dr.numIssues} disabled={!canEdit} onChange={(v) => patchDr({ numIssues: v })} />
+        <EDate label="Audit Given to Resident" value={dr.auditGivenToResident} disabled={!canEdit} onChange={(v) => patchDr({ auditGivenToResident: v })} />
+        <EDate label="Corrections Due" value={dr.correctionsDue} disabled={!canEdit} onChange={(v) => patchDr({ correctionsDue: v })} />
+        <EDate label="Corrections Submitted" value={dr.correctionsSubmitted} disabled={!canEdit} onChange={(v) => patchDr({ correctionsSubmitted: v })} />
+        <EDate label="Audit Finalized" value={dr.auditFinalized} disabled={!canEdit} onChange={(v) => patchDr({ auditFinalized: v })} />
+        <ETextField label="Reviewer" value={dr.reviewer} disabled={!canEdit} onChange={(v) => patchDr({ reviewer: v })} />
+        <ETextField label="Progress Review" value={dr.progressReview} disabled={!canEdit} onChange={(v) => patchDr({ progressReview: v })} />
+        <ETextField label="Remarks [N]" value={dr.remarks} disabled={!canEdit} onChange={(v) => patchDr({ remarks: v })} />
+      </ESection>
+
+      <ESection title="Materials Review">
+        <ENumberField label="Number of Issues" value={mr.numIssues} disabled={!canEdit} onChange={(v) => patchMr({ numIssues: v })} />
+        <ENumberField label="Exceptions" value={mr.exceptions} disabled={!canEdit} onChange={(v) => patchMr({ exceptions: v })} />
+        <EDate label="Review Start" value={mr.reviewStart} disabled={!canEdit} onChange={(v) => patchMr({ reviewStart: v })} />
+        <EDate label="Audit Given" value={mr.auditGiven} disabled={!canEdit} onChange={(v) => patchMr({ auditGiven: v })} />
+        <EDate label="Corrections Due" value={mr.correctionsDue} disabled={!canEdit} onChange={(v) => patchMr({ correctionsDue: v })} />
+        <EDate label="PCC Signoff Sent" value={mr.pccSignoffSent} disabled={!canEdit} onChange={(v) => patchMr({ pccSignoffSent: v })} />
+        <EDate label="PCC Signoff Rcvd" value={mr.pccSignoffRcvd} disabled={!canEdit} onChange={(v) => patchMr({ pccSignoffRcvd: v })} />
+        <EDate label="HMA Signoff Sent" value={mr.hmaSignoffSent} disabled={!canEdit} onChange={(v) => patchMr({ hmaSignoffSent: v })} />
+        <EDate label="HMA Signoff Rcvd" value={mr.hmaSignoffRcvd} disabled={!canEdit} onChange={(v) => patchMr({ hmaSignoffRcvd: v })} />
+        <EDate label="Soils Signoff Sent" value={mr.soilsSignoffSent} disabled={!canEdit} onChange={(v) => patchMr({ soilsSignoffSent: v })} />
+        <EDate label="Soils Signoff Rcvd" value={mr.soilsSignoffRcvd} disabled={!canEdit} onChange={(v) => patchMr({ soilsSignoffRcvd: v })} />
+        <EDate label="Materials Cert Date" value={mr.materialsCertDate} disabled={!canEdit} onChange={(v) => patchMr({ materialsCertDate: v })} />
+        <EDate label="Exception Letter Date" value={mr.exceptionLetterDate} disabled={!canEdit} onChange={(v) => patchMr({ exceptionLetterDate: v })} />
+        <ETextField label="Reviewer" value={mr.reviewer} disabled={!canEdit} onChange={(v) => patchMr({ reviewer: v })} />
+        <ETextField label="Remarks [N]" value={mr.remarks} disabled={!canEdit} onChange={(v) => patchMr({ remarks: v })} />
+      </ESection>
+
       <section className="overflow-hidden rounded-card border border-line bg-surface">
-        <div className="border-b border-line px-4 py-3 text-sm font-semibold text-ink">Performance Period Status</div>
-        {fr.performancePeriod.length === 0 ? (
-          <p className="px-4 py-4 text-sm text-ink-faint">No records to display.</p>
-        ) : (
+        <div className="flex items-center justify-between border-b border-line px-4 py-3">
+          <span className="text-sm font-semibold text-ink">Performance Period Status</span>
+          {canEdit && (
+            <button onClick={addPP} className="text-xs font-medium text-accent hover:underline">+ Add performance period</button>
+          )}
+        </div>
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-canvas text-left text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
-                {["Type", "Required", "Year Placed", "Inspection Needed", "Repairs Needed", "Letter Sent", "Repairs Made", "Bond", "Approved Letter Sent"].map((h) => (
+                {["Type", "Required", "Year Placed", "Insp. Needed", "Repairs Needed", "Letter Sent", "Repairs Made", "Bond", "Approved Letter", ""].map((h) => (
                   <th key={h} className="whitespace-nowrap px-3 py-2">{h}</th>
                 ))}
               </tr>
@@ -511,24 +507,101 @@ function FinalReviewTab({ contract }: { contract: Contract }) {
             <tbody>
               {fr.performancePeriod.map((r, i) => (
                 <tr key={i} className="border-t border-line/70">
-                  <td className="px-3 py-2">{r.type}</td>
-                  <td className="px-3 py-2">{r.required}</td>
-                  <td className="px-3 py-2">{r.yearPlaced}</td>
-                  <td className="px-3 py-2">{r.inspectionNeeded ? "Yes" : "No"}</td>
-                  <td className="px-3 py-2">{r.repairsNeeded ? "Yes" : "No"}</td>
-                  <td className="px-3 py-2">{formatDate(r.letterSent)}</td>
-                  <td className="px-3 py-2">{r.repairsMade ? "Yes" : "No"}</td>
-                  <td className="px-3 py-2">{r.bond}</td>
-                  <td className="px-3 py-2">{formatDate(r.approvedLetterSent)}</td>
+                  <td className="px-2 py-1.5"><EditText value={r.type} disabled={!canEdit} onCommit={(v) => editPP(i, { type: v })} /></td>
+                  <td className="px-2 py-1.5"><EditText value={r.required} disabled={!canEdit} onCommit={(v) => editPP(i, { required: v })} /></td>
+                  <td className="px-2 py-1.5"><EditText value={r.yearPlaced} disabled={!canEdit} onCommit={(v) => editPP(i, { yearPlaced: v })} /></td>
+                  <td className="px-2 py-1.5 text-center"><EBool checked={r.inspectionNeeded} disabled={!canEdit} onChange={(v) => editPP(i, { inspectionNeeded: v })} /></td>
+                  <td className="px-2 py-1.5 text-center"><EBool checked={r.repairsNeeded} disabled={!canEdit} onChange={(v) => editPP(i, { repairsNeeded: v })} /></td>
+                  <td className="px-2 py-1.5"><EditDate value={r.letterSent ?? ""} disabled={!canEdit} onCommit={(v) => editPP(i, { letterSent: v || null })} /></td>
+                  <td className="px-2 py-1.5 text-center"><EBool checked={r.repairsMade} disabled={!canEdit} onChange={(v) => editPP(i, { repairsMade: v })} /></td>
+                  <td className="px-2 py-1.5"><EditText value={r.bond} disabled={!canEdit} onCommit={(v) => editPP(i, { bond: v })} /></td>
+                  <td className="px-2 py-1.5"><EditDate value={r.approvedLetterSent ?? ""} disabled={!canEdit} onCommit={(v) => editPP(i, { approvedLetterSent: v || null })} /></td>
+                  <td className="px-2 py-1.5 text-right">
+                    {canEdit && (
+                      <button onClick={() => patchPP(fr.performancePeriod.filter((_, j) => j !== i))} className="text-xs text-ink-faint hover:text-red-600">✕</button>
+                    )}
+                  </td>
                 </tr>
               ))}
+              {fr.performancePeriod.length === 0 && (
+                <tr><td colSpan={10} className="px-3 py-3 text-center text-ink-faint">No performance periods.</td></tr>
+              )}
             </tbody>
           </table>
-        )}
+        </div>
       </section>
-      <FieldGroup title="DBE Close Out" fields={dbeCloseOut} showEmpty={showEmpty} collapsible={false} />
+
+      <ESection title="DBE Close Out">
+        <ENumberField label="DBE Commitment %" value={dbe.commitmentPct} disabled={!canEdit} onChange={(v) => patchDbe({ commitmentPct: v })} />
+        <ECheckField label="BC 2115 Received" checked={dbe.bc2115} disabled={!canEdit} onChange={(v) => patchDbe({ bc2115: v })} />
+        <ECheckField label="All SBE 2115 Received" checked={dbe.allSbe2115} disabled={!canEdit} onChange={(v) => patchDbe({ allSbe2115: v })} />
+        <ECheckField label="Approved" checked={dbe.approved} disabled={!canEdit} onChange={(v) => patchDbe({ approved: v })} />
+        <ECheckField label="Goal Met" checked={dbe.goalMet} disabled={!canEdit} onChange={(v) => patchDbe({ goalMet: v })} />
+        <ECheckField label="DBE Final Doc (SBE 2028)" checked={dbe.dbeFinalDocSbe2028} disabled={!canEdit} onChange={(v) => patchDbe({ dbeFinalDocSbe2028: v })} />
+        <ECheckField label="Waiver Requested" checked={dbe.waiverRequested} disabled={!canEdit} onChange={(v) => patchDbe({ waiverRequested: v })} />
+        <ECheckField label="2028 Packet Approved" checked={dbe.packet2028Approved} disabled={!canEdit} onChange={(v) => patchDbe({ packet2028Approved: v })} />
+        <ECheckField label="Waiver Granted" checked={dbe.waiverGranted} disabled={!canEdit} onChange={(v) => patchDbe({ waiverGranted: v })} />
+        <ETextField label="EEO Remarks [N]" value={dbe.eeoRemarks} disabled={!canEdit} onChange={(v) => patchDbe({ eeoRemarks: v })} />
+        <ETextField label="EEO Representative" value={dbe.eeoRepresentative} disabled={!canEdit} onChange={(v) => patchDbe({ eeoRepresentative: v })} />
+      </ESection>
+
+      <section className="rounded-card border border-line bg-surface p-4">
+        <div className="mb-2 text-sm font-semibold text-ink">Closeout Documents [D]</div>
+        <FileDrop scope={{ entity: "finalReview", entityId: contract.id }} disabled={!canEdit} label="Attach a closeout document" />
+      </section>
     </div>
   );
+}
+
+// --- editable Final Review field primitives (brief 18) ---------------------
+
+function ESection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="overflow-hidden rounded-card border border-line bg-surface">
+      <div className="border-b border-line px-4 py-3 text-sm font-semibold text-ink">{title}</div>
+      <div className="grid grid-cols-2 gap-x-6 gap-y-3 p-4 lg:grid-cols-3">{children}</div>
+    </section>
+  );
+}
+function ELabel({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <div className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">{label}</div>
+      {children}
+    </div>
+  );
+}
+function EDate({ label, value, disabled, onChange }: { label: string; value: string | null; disabled?: boolean; onChange: (v: string | null) => void }) {
+  return (
+    <ELabel label={label}>
+      <EditDate value={value ?? ""} disabled={disabled} onCommit={(v) => onChange(v || null)} />
+    </ELabel>
+  );
+}
+function ETextField({ label, value, disabled, onChange }: { label: string; value: string; disabled?: boolean; onChange: (v: string) => void }) {
+  return (
+    <ELabel label={label}>
+      <EditText value={value} disabled={disabled} onCommit={onChange} />
+    </ELabel>
+  );
+}
+function ENumberField({ label, value, disabled, onChange }: { label: string; value: number; disabled?: boolean; onChange: (v: number) => void }) {
+  return (
+    <ELabel label={label}>
+      <EditNumber value={value} disabled={disabled} onCommit={onChange} />
+    </ELabel>
+  );
+}
+function ECheckField({ label, checked, disabled, onChange }: { label: string; checked: boolean; disabled?: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex items-center gap-2 self-end pb-1 text-sm text-ink">
+      <input type="checkbox" className="h-4 w-4 accent-accent disabled:opacity-50" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
+      {label}
+    </label>
+  );
+}
+function EBool({ checked, disabled, onChange }: { checked: boolean; disabled?: boolean; onChange: (v: boolean) => void }) {
+  return <input type="checkbox" className="h-4 w-4 accent-accent disabled:opacity-50" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />;
 }
 
 // --- shared bits -----------------------------------------------------------
