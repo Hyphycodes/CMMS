@@ -21,6 +21,7 @@ import {
   type PayItem,
 } from "@/domain/types";
 import { Pill } from "@/components/ui/Pill";
+import { canMarkReviewComplete, unresolvedEoiCount } from "@/domain/rules";
 import { DetailDrawer } from "@/components/ui/DetailDrawer";
 import { InventoryForm } from "@/components/inventory/InventoryForm";
 import {
@@ -131,8 +132,8 @@ function StatusControl({
   onChange: (ids: string[], status: InventoryDetail["status"], opts?: { note?: string }) => void;
 }) {
   const pushToast = useStore((s) => s.pushToast);
-  const unresolved = detail.eoi.filter((r) => r.approval === "Unset").length;
-  const blockComplete = unresolved > 0;
+  const unresolved = unresolvedEoiCount(detail);
+  const blockComplete = !canMarkReviewComplete(detail);
   return (
     <div className="flex flex-col items-end gap-1">
       <select
