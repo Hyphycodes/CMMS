@@ -14,7 +14,7 @@ import { CONTRACTORS, DESIGNER_FIRMS } from "@/data/reference";
 import type { Field } from "@/lib/fields";
 import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 
-type FieldType = "text" | "mono" | "date" | "money" | "number" | "percent" | "days";
+type FieldType = "text" | "mono" | "date" | "money" | "number" | "percent" | "days" | "bool";
 interface FieldDef {
   label: string;
   key: keyof ContractSummary;
@@ -42,7 +42,17 @@ const CARDS: CardDef[] = [
       { label: "Contract Status", key: "contractStatus", type: "text" },
       { label: "Prime Contractor", key: "primeContractor", type: "text" },
       { label: "Prime Contractor ID", key: "primeContractorId", type: "mono" },
+      { label: "Marked Route", key: "markedRoute", type: "text" },
+      { label: "County No. 1", key: "countyNo1", type: "text" },
+      { label: "County 2", key: "county2", type: "text" },
+      { label: "County No. 2", key: "countyNo2", type: "text" },
+      { label: "County 3", key: "county3", type: "text" },
+      { label: "County No. 3", key: "countyNo3", type: "text" },
+      { label: "PPS Number", key: "ppsNumber", type: "mono" },
+      { label: "Bonding Company", key: "bondingCompany", type: "text" },
       { label: "Resident Engineer", key: "residentEngineer", type: "text" },
+      { label: "Resident Phone", key: "residentPhone", type: "text" },
+      { label: "Consultant or In-House", key: "consultantOrInHouse", type: "text" },
       { label: "Supervising Field Engineer", key: "supervisingFieldEngineer", type: "text" },
       { label: "District Construction Engineer", key: "districtConstructionEngineer", type: "text" },
       { label: "Designer Firm", key: "designerFirm", type: "text" },
@@ -88,6 +98,10 @@ const CARDS: CardDef[] = [
       { label: "Funding", key: "funding", type: "text" },
       { label: "Specification Year", key: "specificationYear", type: "text" },
       { label: "Units", key: "units", type: "text" },
+      { label: "HMA Adjustment", key: "hmaAdj", type: "bool" },
+      { label: "Steel Adjustment", key: "steelAdj", type: "bool" },
+      { label: "Fuel Adjustment", key: "fuelAdj", type: "bool" },
+      { label: "Trainees", key: "trainees", type: "bool" },
     ],
   },
   {
@@ -98,6 +112,11 @@ const CARDS: CardDef[] = [
       { label: "Original Contract Time", key: "originalContractTime", type: "days" },
       { label: "Current Contract Time", key: "currentContractTime", type: "days" },
       { label: "Time Charged to Date", key: "timeChargedToDate", type: "days" },
+      { label: "Contract Working Days", key: "contractWorkingDays", type: "number" },
+      { label: "Working Days Used", key: "workingDaysUsed", type: "number" },
+      { label: "Contract Calendar Days", key: "contractCalendarDays", type: "number" },
+      { label: "Working Days Added", key: "workingDaysAdded", type: "number" },
+      { label: "Calendar Days Added", key: "calendarDaysAdded", type: "number" },
       { label: "Liquidated Damages / Day", key: "liquidatedDamagesPerDay", type: "money" },
     ],
   },
@@ -175,7 +194,7 @@ export function ContractSummaryPage() {
         </div>
 
         <FlatSection title="Summary">
-          <SummaryTab summary={s} />
+          <SummaryTab contract={contract} />
         </FlatSection>
         <FlatSection title="Insurance">
           <InsuranceTab contract={contract} />
@@ -209,8 +228,23 @@ function FlatSection({ title, count, children }: { title: string; count?: number
 
 // --- Summary (unchanged) ---------------------------------------------------
 
-function SummaryTab({ summary }: { summary: ContractSummary }) {
+function SummaryTab({ contract }: { contract: Contract }) {
   const [showEmpty, setShowEmpty] = useState(false);
+  const setContractSummary = useStore((s) => s.setContractSummary);
+  const canEdit = useStore((s) => s.can("author_contract"));
+  const authCount = useStore((s) => s.authorizationsForContract(contract.id).length);
+  const summary = contract.summary;
+  const patch = (p: Partial<ContractSummary>) => setContractSummary(contract.id, p);
+
+  // Derived value math (computed, never stored) — brief 19.
+  const netChange =
+    summary.additions !== undefined || summary.deductions !== undefined
+      ? (summary.additions ?? 0) - (summary.deductions ?? 0)
+      : summary.adjustmentAmount;
+  const adjusted = summary.awardedAmount + netChange;
+  const changePct = summary.awardedAmount ? (netChange / summary.awardedAmount) * 100 : 0;
+  const balanceRemaining = adjusted - summary.totalPaidToDate;
+
   return (
     <>
       <div className="flex items-center justify-end">
@@ -219,12 +253,57 @@ function SummaryTab({ summary }: { summary: ContractSummary }) {
           Show empty fields
         </label>
       </div>
+
+      {/* Editable working submittals (legacy editable; calendar pickers) — brief 19 */}
+      <section className="mt-3 overflow-hidden rounded-card border border-line bg-surface">
+        <div className="border-b border-line px-4 py-2.5 text-sm font-semibold text-ink">
+          Working Submittals {canEdit ? <span className="ml-1 text-[11px] font-normal text-ink-faint">(editable)</span> : null}
+        </div>
+        <div className="grid grid-cols-1 gap-x-8 gap-y-3 px-4 py-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ELabel label="Progress Schedule Received"><EditDate value={summary.progressScheduleReceived ?? ""} disabled={!canEdit} onCommit={(v) => patch({ progressScheduleReceived: v || null })} /></ELabel>
+          <ELabel label="Progress Schedule Approved"><EditDate value={summary.progressScheduleApproved ?? ""} disabled={!canEdit} onCommit={(v) => patch({ progressScheduleApproved: v || null })} /></ELabel>
+          <ELabel label="Preconstruction Minutes"><EditDate value={summary.preconstructionMinutesDate ?? ""} disabled={!canEdit} onCommit={(v) => patch({ preconstructionMinutesDate: v || null })} /></ELabel>
+          <ELabel label="EHS Plan Received"><EditDate value={summary.ehsPlanReceived ?? ""} disabled={!canEdit} onCommit={(v) => patch({ ehsPlanReceived: v || null })} /></ELabel>
+          <ELabel label="DBE Program Received"><EditDate value={summary.dbeProgramReceived ?? ""} disabled={!canEdit} onCommit={(v) => patch({ dbeProgramReceived: v || null })} /></ELabel>
+          <ELabel label="Notice of Intent Processed"><EditDate value={summary.noticeOfIntentProcessed ?? ""} disabled={!canEdit} onCommit={(v) => patch({ noticeOfIntentProcessed: v || null })} /></ELabel>
+          <label className="flex items-center gap-2 self-end pb-1 text-sm text-ink">
+            <input type="checkbox" className="h-4 w-4 accent-accent disabled:opacity-50" checked={!!summary.noticeOfIntentRequired} disabled={!canEdit} onChange={(e) => patch({ noticeOfIntentRequired: e.target.checked })} />
+            Notice of Intent Required
+          </label>
+        </div>
+      </section>
+
+      {/* Derived contract values — computed, not stored (brief 19). */}
+      <section className="mt-3 overflow-hidden rounded-card border border-line bg-surface">
+        <div className="border-b border-line px-4 py-2.5 text-sm font-semibold text-ink">Contract Values</div>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-4 px-4 py-4 sm:grid-cols-3 lg:grid-cols-4">
+          <ValueStat label="Awarded Value" value={formatMoney(summary.awardedAmount)} />
+          <ValueStat label="Additions" value={formatMoney(summary.additions ?? 0)} />
+          <ValueStat label="Deductions" value={formatMoney(summary.deductions ?? 0)} />
+          <ValueStat label="Net Change" value={formatMoney(netChange)} />
+          <ValueStat label="Adjusted Contract Value" value={formatMoney(adjusted)} />
+          <ValueStat label="Change %" value={`${changePct.toFixed(2)}%`} />
+          <ValueStat label="Authorization Count" value={String(authCount)} />
+          <ValueStat label="Completed Amount" value={formatMoney(summary.totalPaidToDate)} />
+          <ValueStat label="Balance Remaining" value={formatMoney(balanceRemaining)} />
+        </div>
+      </section>
+
       <div className="mt-3 space-y-3">
         {CARDS.map((card) => (
           <SummaryCard key={card.title} card={card} summary={summary} showEmpty={showEmpty} />
         ))}
       </div>
     </>
+  );
+}
+
+function ValueStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">{label}</div>
+      <div className="truncate text-sm font-semibold tabular-nums text-ink" title={value}>{value}</div>
+    </div>
   );
 }
 
@@ -621,6 +700,7 @@ function isEmpty(v: unknown): boolean {
 }
 
 function formatSummary(v: unknown, type: FieldType): string {
+  if (type === "bool") return v ? "Yes" : "No";
   if (isEmpty(v)) return "—";
   switch (type) {
     case "date":

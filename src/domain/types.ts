@@ -564,6 +564,36 @@ export interface ContractSummary {
   currentContractTime: number;
   timeChargedToDate: number;
   liquidatedDamagesPerDay: number;
+
+  // --- Missing legacy Summary fields (brief 19) — all optional/backfilled ---
+  markedRoute?: string;
+  county2?: string;
+  county3?: string;
+  countyNo1?: string;
+  countyNo2?: string;
+  countyNo3?: string;
+  ppsNumber?: string;
+  bondingCompany?: string;
+  /** Value block — additions/deductions feed the derived Net Change. */
+  additions?: number;
+  deductions?: number;
+  hmaAdj?: boolean;
+  steelAdj?: boolean;
+  fuelAdj?: boolean;
+  trainees?: boolean;
+  residentPhone?: string;
+  consultantOrInHouse?: string; // "Consultant" | "In-House"
+  // Time block
+  contractWorkingDays?: number;
+  workingDaysUsed?: number;
+  contractCalendarDays?: number;
+  workingDaysAdded?: number;
+  calendarDaysAdded?: number;
+  // Editable working submittals (calendar pickers)
+  progressScheduleApproved?: string | null;
+  preconstructionMinutesDate?: string | null;
+  noticeOfIntentRequired?: boolean;
+  noticeOfIntentProcessed?: string | null;
 }
 
 // ---------------------------------------------------------------------------
