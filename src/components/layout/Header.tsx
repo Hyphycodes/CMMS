@@ -9,7 +9,7 @@ import { ContractSelector } from "./ContractSelector";
 // Brief 23 — the top-bar mega-menu: every global surface in one place, beside the
 // IntelligentSearch project picker.
 const MENU_GROUPS: { heading: string; links: { to: string; label: string }[] }[] = [
-  { heading: "Home", links: [{ to: "/", label: "All contracts" }, { to: "/my-work", label: "My Work" }, { to: "/inbox", label: "Review inbox" }] },
+  { heading: "Home", links: [{ to: "/", label: "All contracts" }, { to: "/my-work", label: "My Work" }, { to: "/radar", label: "Risk Radar" }, { to: "/inbox", label: "Review inbox" }] },
   {
     heading: "Materials",
     links: [
