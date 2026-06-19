@@ -27,8 +27,8 @@ import {
 import { ChevronDown } from "@/components/ui/icons";
 import { payItemTone, groupTone } from "@/domain/status";
 import { formatMoney, formatNumber } from "@/lib/format";
+import { FUND_KEYS } from "@/config"; // IDOT-SPECIFIC — via the config boundary (F5)
 
-const FUND_KEYS = ["FED-STP", "STATE-01", "LOCAL-A", "FED-NHPP", "STATE-BR"] as const;
 const TABS = ["Pay Item Entry", "Pay Item Materials", "Material Associations"] as const;
 type Tab = (typeof TABS)[number];
 

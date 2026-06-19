@@ -122,13 +122,11 @@ function generateMixDesigns(): MixDesign[] {
   return out;
 }
 
-export const AUTH_STEPS: Record<AuthType, string[]> = {
-  Standard: ["Resident Engineer", "District Construction"],
-  "Overage/Balancing": ["Resident Engineer", "District Construction", "Bureau of Construction"],
-  "Major Change": ["Resident Engineer", "District Construction", "Bureau of Construction", "FHWA"],
-};
-
-const FUND_KEYS = ["FED-STP", "STATE-01", "LOCAL-A", "FED-NHPP", "STATE-BR"];
+// IDOT-SPECIFIC workflow constants now live behind the config boundary (F5).
+// Re-exported here for the existing import site (AuthorizationsPage).
+import { FUND_KEYS as CONFIG_FUND_KEYS, AUTH_STEPS } from "@/config";
+export { AUTH_STEPS };
+const FUND_KEYS = [...CONFIG_FUND_KEYS];
 
 // Test field templates keyed by material family (Ch. 11) — drives the Tests tab.
 export const TEST_TEMPLATES: TestTemplate[] = [
