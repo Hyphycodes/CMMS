@@ -21,6 +21,7 @@ import {
 } from "@/domain/types";
 import { Pill } from "@/components/ui/Pill";
 import { canMarkReviewComplete, unresolvedEoiCount } from "@/domain/rules";
+import { descriptorLabelsFor } from "@/domain/descriptors";
 import { FileDrop } from "@/components/ui/FileDrop";
 import { ContextMenu } from "@/components/ui/ContextMenu";
 import { DetailDrawer } from "@/components/ui/DetailDrawer";
@@ -382,12 +383,30 @@ function LedgerTab({
   };
   const deleteRow = (id: string) => commit(rows.filter((r) => String(r.id) !== id));
 
+  // Brief 24 — material-specific descriptor column labels (Color / Type of
+  // Sheeting / …) driven off the material's family descriptor schema.
+  const material = MATERIALS.find((m) => m.code === detail.materialCode);
+  const [d1Label, d2Label, d3Label] = descriptorLabelsFor(material?.family);
+
+  // Inventory Quantity by Description rollup (brief 24) — group ledger rows by
+  // their descriptor tuple and sum the transaction quantity.
+  const byDescription = useMemo(() => {
+    const map = new Map<string, { desc1: string; desc2: string; desc3: string; qty: number }>();
+    for (const r of rows) {
+      const key = `${r.desc1}|${r.desc2}|${r.desc3}`;
+      const e = map.get(key) ?? { desc1: r.desc1, desc2: r.desc2, desc3: r.desc3, qty: 0 };
+      e.qty += r.transactionQty;
+      map.set(key, e);
+    }
+    return [...map.values()];
+  }, [rows]);
+
   // Fitted grid: identity (Id) is frozen left; flexible text columns shrink so
   // all columns fit within the drawer at desktop width — no horizontal scroll.
   const template =
-    "44px 124px minmax(0,1.3fr) minmax(0,0.9fr) minmax(0,0.9fr) minmax(0,1.05fr) minmax(0,1.15fr) 112px 96px" +
+    "44px 120px minmax(0,1.1fr) minmax(0,0.8fr) minmax(0,0.8fr) minmax(0,0.8fr) minmax(0,1fr) minmax(0,1.05fr) 104px 90px" +
     (canEdit ? " 64px" : "");
-  const headers = ["Id", "Date", "Pay Item", "Desc 1", "Desc 2", "Mix Design", "Batch/Lot/Heat", "Type", "Trans. Qty"];
+  const headers = ["Id", "Date", "Pay Item", d1Label, d2Label, d3Label, "Mix Design", "Batch/Lot/Heat", "Type", "Trans. Qty"];
 
   const stickyId = "sticky left-0 z-10 bg-surface";
   const stickyIdHead = "sticky left-0 z-10 bg-canvas";
@@ -398,10 +417,11 @@ function LedgerTab({
         <span className="text-ink-soft">Ledger summary</span>
         <span className="font-semibold text-ink">{formatQty(received, detail.materialUnit)} received</span>
         <span className="text-ink-faint">· {rows.length} entries · Material Unit {detail.materialUnit || "—"}</span>
+        {material?.specialId && <span className="text-ink-faint">· Special ID {material.specialId}</span>}
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-line">
-        <div style={{ minWidth: 640 }}>
+        <div style={{ minWidth: 720 }}>
           {/* header */}
           <div
             className="grid items-center gap-2 border-b border-line bg-canvas px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-ink-soft"
@@ -410,7 +430,7 @@ function LedgerTab({
             {headers.map((h, i) => (
               <span
                 key={h}
-                className={[i === 0 ? stickyIdHead : "", i === 8 ? "text-right" : "", "truncate"].join(" ")}
+                className={[i === 0 ? stickyIdHead : "", i === 9 ? "text-right" : "", "truncate"].join(" ")}
               >
                 {h}
               </span>
@@ -442,6 +462,7 @@ function LedgerTab({
                 )}
                 <EditText value={r.desc1} disabled={!canEdit} onCommit={(v) => editRow(String(r.id), { desc1: v })} />
                 <EditText value={r.desc2} disabled={!canEdit} onCommit={(v) => editRow(String(r.id), { desc2: v })} />
+                <EditText value={r.desc3} disabled={!canEdit} onCommit={(v) => editRow(String(r.id), { desc3: v })} />
                 <EditText value={r.mixDesign} disabled={!canEdit} mono onCommit={(v) => editRow(String(r.id), { mixDesign: v })} />
                 <EditText value={r.batchLotHeat} disabled={!canEdit} mono onCommit={(v) => editRow(String(r.id), { batchLotHeat: v })} />
                 <EditSelect value={r.type} options={LEDGER_TYPES} disabled={!canEdit} onCommit={(v) => editRow(String(r.id), { type: v })} />
@@ -465,13 +486,46 @@ function LedgerTab({
               style={{ gridTemplateColumns: template }}
             >
               <span className={stickyId.replace("bg-surface", "bg-canvas")} />
-              <span className="col-span-7 text-ink-soft">Total received</span>
+              <span className="col-span-8 text-ink-soft">Total received</span>
               <span className="text-right tabular-nums">{formatNumber(received, 2)}</span>
               {canEdit && <span />}
             </div>
           )}
         </div>
       </div>
+
+      {/* Inventory Quantity by Description rollup (brief 24) */}
+      {byDescription.length > 0 && (
+        <div className="overflow-hidden rounded-lg border border-line">
+          <div className="border-b border-line bg-canvas px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+            Inventory Quantity by Description
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-[11px] uppercase tracking-wide text-ink-faint">
+                <th className="px-3 py-1.5 font-semibold">{d1Label}</th>
+                <th className="px-3 py-1.5 font-semibold">{d2Label}</th>
+                <th className="px-3 py-1.5 font-semibold">{d3Label}</th>
+                <th className="px-3 py-1.5 text-right font-semibold">Quantity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byDescription.map((g, i) => (
+                <tr key={i} className="border-t border-line/70">
+                  <td className="px-3 py-1.5">{g.desc1 || "—"}</td>
+                  <td className="px-3 py-1.5">{g.desc2 || "—"}</td>
+                  <td className="px-3 py-1.5">{g.desc3 || "—"}</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums">{formatNumber(g.qty, 2)}</td>
+                </tr>
+              ))}
+              <tr className="border-t-2 border-line bg-canvas font-medium">
+                <td className="px-3 py-1.5" colSpan={3}>Total</td>
+                <td className="px-3 py-1.5 text-right tabular-nums">{formatNumber(byDescription.reduce((s, g) => s + g.qty, 0), 2)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {canEdit && (
         <button
