@@ -49,3 +49,12 @@ export const groupTone = (s: GroupStatus): PillTone => GROUP_TONE[s];
 export const sampleTone = (s: SampleStatus): PillTone => SAMPLE_TONE[s];
 
 export const pillClass = (tone: PillTone): string => `pill pill-${tone}`;
+
+/**
+ * Brief 22 — a Test ID / test record is editable while the sample is in a
+ * testing state, and frozen once it's been Approved (or Rejected). The single
+ * helper EOI and the Sample drawer both drive their lock off.
+ */
+export function isTestEditable(status: SampleStatus): boolean {
+  return status !== "Approved" && status !== "Rejected";
+}

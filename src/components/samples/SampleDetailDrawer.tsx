@@ -10,7 +10,7 @@ import { SAMPLE_STATUSES, type Sample, type Test } from "@/domain/types";
 import { Pill } from "@/components/ui/Pill";
 import { EditableRowTable, EditText, type EditableColumn } from "@/components/ui/EditableRowTable";
 import { CheckIcon, XIcon, FileIcon, PlusIcon } from "@/components/ui/icons";
-import { sampleTone } from "@/domain/status";
+import { sampleTone, isTestEditable } from "@/domain/status";
 
 const TESTING_STATUSES = SAMPLE_STATUSES.filter((s) => s !== "Approved" && s !== "Rejected");
 
@@ -258,7 +258,8 @@ function StatusField({ sample }: { sample: Sample }) {
 // ---------------------------------------------------------------------------
 
 function TestsSection({ sample, tests }: { sample: Sample; tests: Test[] }) {
-  const canTest = useStore((s) => s.can("enter_tests"));
+  // Brief 22 — test records freeze once the sample is Approved/Rejected.
+  const canTest = useStore((s) => s.can("enter_tests")) && isTestEditable(sample.status);
   const canValidate = useStore((s) => s.can("validate_test"));
   const currentUser = useStore((s) => s.currentUser);
   const templates = useStore((s) => s.testTemplates);

@@ -31,7 +31,7 @@ import {
   EditSelect,
   EditChips,
 } from "@/components/ui/EditableRowTable";
-import { inventoryTone, eoiTone, payItemTone, groupTone } from "@/domain/status";
+import { inventoryTone, eoiTone, payItemTone, groupTone, isTestEditable } from "@/domain/status";
 import { formatDate, formatQty, formatNumber } from "@/lib/format";
 
 const TABS = ["Details", "Quantity Ledger", "Evidence of Inspection", "Pay Item Materials"] as const;
@@ -488,6 +488,11 @@ function EOITab({ detail, itemId, canEdit }: { detail: InventoryDetail; itemId: 
     () => samplesList.filter((s) => s.inventoryItemId === itemId && s.status === "Approved").map((s) => s.testId),
     [samplesList, itemId],
   );
+  // Brief 22 — Test IDs whose sample is decided (Approved/Rejected) lock the field.
+  const lockedTestIds = useMemo(
+    () => new Set(samplesList.filter((s) => !isTestEditable(s.status)).map((s) => s.testId)),
+    [samplesList],
+  );
 
   const commit = (next: EOIEntry[]) => setEoi(itemId, next);
   const editRow = (id: string, patch: Partial<EOIEntry>) => commit(rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -521,6 +526,7 @@ function EOITab({ detail, itemId, canEdit }: { detail: InventoryDetail; itemId: 
             itemId={itemId}
             ledgerIds={ledgerIds}
             approvedTestIds={approvedTestIds}
+            testIdLocked={!!row.testId && lockedTestIds.has(row.testId)}
             canEdit={canEdit}
             onEditRow={editRow}
             onDelete={canEdit ? () => commit(rows.filter((r) => r.id !== row.id)) : undefined}
@@ -558,6 +564,7 @@ function EOIRow({
   itemId,
   ledgerIds,
   approvedTestIds,
+  testIdLocked,
   canEdit,
   onEditRow,
   onDelete,
@@ -566,6 +573,7 @@ function EOIRow({
   itemId: string;
   ledgerIds: number[];
   approvedTestIds: string[];
+  testIdLocked: boolean;
   canEdit: boolean;
   onEditRow: (id: string, patch: Partial<EOIEntry>) => void;
   onDelete?: () => void;
@@ -598,7 +606,8 @@ function EOIRow({
           <input
             key={row.testId}
             defaultValue={row.testId}
-            disabled={!canEdit}
+            disabled={!canEdit || testIdLocked}
+            title={testIdLocked ? "Locked — the linked sample has been approved/rejected" : undefined}
             list={approvedTestIds.length ? `tid-${row.id}` : undefined}
             placeholder="—"
             onBlur={(e) => {
