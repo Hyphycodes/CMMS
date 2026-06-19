@@ -47,6 +47,7 @@ import type {
   MixDesign,
   MaterialAllowanceLine,
   QmpPackage,
+  MaterialAssociation,
 } from "@/domain/types";
 import { makeRng, type Rng } from "./rng";
 import { buildPayItemMaterials } from "@/domain/grouping";
@@ -1028,6 +1029,27 @@ const CONTROLLING = [
   "Bridge deck pour",
   "Guardrail installation",
 ];
+
+/**
+ * Deterministic Material Associations for a pay item (Ch. 8, brief 17). The
+ * first material of the pay item's family is Primary; the rest are Components.
+ * Each carries its own conversion factor + the legacy effective/expiration
+ * window (1/1/1974 → 1/1/2080). Pure + stable — no per-pay-item seed needed.
+ */
+export function buildMaterialAssociations(payItemNumber: string): MaterialAssociation[] {
+  const family = PAY_ITEM_TEMPLATES.find((t) => t.code === payItemNumber)?.family;
+  const list = family ? MATERIALS.filter((m) => m.family === family) : MATERIALS.slice(0, 8);
+  return list.map((m, i) => ({
+    payItemNumber,
+    materialCode: m.code,
+    materialName: m.name,
+    unit: m.unit,
+    materialType: i === 0 ? "Primary" : "Component",
+    conversionFactor: m.conversionFactor,
+    effectiveDate: "1974-01-01",
+    expirationDate: "2080-01-01",
+  }));
+}
 
 /** Deterministic diary day for a (contract, date). Overlaid by saved deltas. */
 export function buildDiaryDay(contract: Contract, date: string): DiaryDay {

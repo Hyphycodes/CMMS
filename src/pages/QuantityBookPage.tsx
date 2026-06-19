@@ -6,12 +6,12 @@
 import { useMemo, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useStore } from "@/store/store";
-import { buildOverlaidDetail } from "@/data/seed/generate";
-import { MATERIALS } from "@/data/reference";
+import { buildOverlaidDetail, buildMaterialAssociations } from "@/data/seed/generate";
 import {
   PAY_ITEM_MATERIAL_STATUSES,
   type PayItem,
   type PlacementEntry,
+  type MaterialAssociation,
 } from "@/domain/types";
 import { TabBar } from "@/components/ui/TabBar";
 import { Pill } from "@/components/ui/Pill";
@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/EditableRowTable";
 import { ChevronDown } from "@/components/ui/icons";
 import { payItemTone, groupTone } from "@/domain/status";
-import { formatMoney, formatNumber } from "@/lib/format";
+import { formatMoney, formatNumber, formatDate } from "@/lib/format";
 import { FUND_KEYS } from "@/config"; // IDOT-SPECIFIC — via the config boundary (F5)
 
 const TABS = ["Pay Item Entry", "Pay Item Materials", "Material Associations"] as const;
@@ -289,28 +289,33 @@ function PayItemMaterials({ contractId, payItem }: { contractId: string; payItem
 
 function MaterialAssociations({ contractId, payItem }: { contractId: string; payItem: PayItem }) {
   const navigate = useNavigate();
-  const family = MATERIALS.find((m) => m.code === payItem.number)?.family;
-  // associate by family of the pay item's template; fall back to a useful subset
-  const associated = useMemo(() => {
-    const fam = family ?? null;
-    const list = fam ? MATERIALS.filter((m) => m.family === fam) : MATERIALS.slice(0, 8);
-    return list;
-  }, [family]);
+  // Real association model (brief 17): Primary/Component, conversion, effective/expiration.
+  const associated = useMemo(() => buildMaterialAssociations(payItem.number), [payItem.number]);
 
   const columns = [
-    { id: "code", accessorKey: "code", header: "Material Code", size: 120, cell: ({ row }: { row: { original: (typeof MATERIALS)[number] } }) => <span className="font-mono text-[13px] font-semibold">{row.original.code}</span> },
-    { id: "name", accessorKey: "name", header: "Material Name", size: 240, meta: { grow: true } },
-    { id: "conversion", accessorFn: (m: (typeof MATERIALS)[number]) => m.conversionFactor, header: "Conversion", size: 110, meta: { align: "right" as const } },
-    { id: "type", accessorFn: () => "Primary", header: "Material Type", size: 120 },
-    { id: "uom", accessorKey: "unit", header: "UOM", size: 90 },
+    { id: "code", accessorKey: "materialCode", header: "Material Code", size: 120, cell: ({ row }: { row: { original: MaterialAssociation } }) => <span className="font-mono text-[13px] font-semibold">{row.original.materialCode}</span> },
+    { id: "name", accessorKey: "materialName", header: "Material Name", size: 220, meta: { grow: true } },
+    {
+      id: "type",
+      accessorFn: (m: MaterialAssociation) => m.materialType,
+      header: "Material Type",
+      size: 120,
+      cell: ({ row }: { row: { original: MaterialAssociation } }) => (
+        <Pill tone={row.original.materialType === "Primary" ? "blue" : "slate"}>{row.original.materialType}</Pill>
+      ),
+    },
+    { id: "conversion", accessorFn: (m: MaterialAssociation) => m.conversionFactor, header: "Conversion", size: 100, meta: { align: "right" as const } },
+    { id: "uom", accessorKey: "unit", header: "UOM", size: 80 },
+    { id: "effective", accessorFn: (m: MaterialAssociation) => m.effectiveDate, header: "Effective Date", size: 130, cell: ({ row }: { row: { original: MaterialAssociation } }) => formatDate(row.original.effectiveDate) },
+    { id: "expiration", accessorFn: (m: MaterialAssociation) => m.expirationDate, header: "Expiration Date", size: 130, cell: ({ row }: { row: { original: MaterialAssociation } }) => formatDate(row.original.expirationDate) },
     {
       id: "inventory",
       accessorFn: () => "",
       header: "Inventory",
       size: 110,
-      cell: ({ row }: { row: { original: (typeof MATERIALS)[number] } }) => (
+      cell: ({ row }: { row: { original: MaterialAssociation } }) => (
         <button
-          onClick={() => navigate(`/contract/${contractId}/inventory?new=1&material=${row.original.code}&payItem=${payItem.number}`)}
+          onClick={() => navigate(`/contract/${contractId}/inventory?new=1&material=${row.original.materialCode}&payItem=${payItem.number}`)}
           className="rounded-md border border-accent/40 bg-accent-soft px-2 py-0.5 text-xs font-semibold text-accent transition hover:bg-accent hover:text-white"
         >
           Create
@@ -321,9 +326,9 @@ function MaterialAssociations({ contractId, payItem }: { contractId: string; pay
 
   return (
     <div className="space-y-2">
-      <p className="text-sm text-ink-soft">Materials associated with this pay item. Create spins up an inventory pre-linked to {payItem.number}.</p>
+      <p className="text-sm text-ink-soft">Materials associated with this pay item ({associated.length}). Create spins up an inventory pre-linked to {payItem.number}.</p>
       <div className="h-[440px]">
-        <DataGrid data={associated} columns={columns} getRowId={(m) => m.code} emptyMessage="No associated materials." />
+        <DataGrid data={associated} columns={columns} getRowId={(m) => m.materialCode} emptyMessage="No associated materials." />
       </div>
     </div>
   );

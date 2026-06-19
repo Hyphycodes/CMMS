@@ -168,6 +168,23 @@ export interface PayItem {
   isSpecialtyItem?: boolean;
 }
 
+/**
+ * Pay-item → material association (Ch. 8 Material Associations, brief 17). One
+ * Primary per pay item; the rest are Components. Each carries its own conversion
+ * factor + effective/expiration window (legacy shows 1/1/1974 → 1/1/2080).
+ */
+export type MaterialAssociationType = "Primary" | "Component";
+export interface MaterialAssociation {
+  payItemNumber: string;
+  materialCode: string;
+  materialName: string;
+  unit: string;
+  materialType: MaterialAssociationType;
+  conversionFactor: number;
+  effectiveDate: string;
+  expirationDate: string;
+}
+
 /** Authorizations (Ch. 7) — brief 10. */
 export type AuthType = "Standard" | "Overage/Balancing" | "Major Change";
 export const AUTH_TYPES: AuthType[] = ["Standard", "Overage/Balancing", "Major Change"];
