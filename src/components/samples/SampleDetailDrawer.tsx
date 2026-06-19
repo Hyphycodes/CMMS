@@ -11,6 +11,7 @@ import { Pill } from "@/components/ui/Pill";
 import { EditableRowTable, EditText, type EditableColumn } from "@/components/ui/EditableRowTable";
 import { CheckIcon, XIcon, FileIcon, PlusIcon } from "@/components/ui/icons";
 import { sampleTone, isTestEditable } from "@/domain/status";
+import { HistoryPanel } from "@/components/ui/HistoryPanel";
 
 const TESTING_STATUSES = SAMPLE_STATUSES.filter((s) => s !== "Approved" && s !== "Rejected");
 
@@ -180,6 +181,14 @@ export function SampleDetailDrawer({ sampleId, onClose }: { sampleId: string; on
               onAdd={addFiles}
               onRemove={removeAttachment}
             />
+
+            {/* History (P4) */}
+            <div>
+              <div className="mb-3 border-b border-line pb-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-widest text-ink-faint">History</span>
+              </div>
+              <HistoryPanel entity="sample" entityId={sample.id} />
+            </div>
 
           </div>
         </div>

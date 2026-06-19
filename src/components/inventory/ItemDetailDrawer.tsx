@@ -23,6 +23,7 @@ import { Pill } from "@/components/ui/Pill";
 import { canMarkReviewComplete, unresolvedEoiCount } from "@/domain/rules";
 import { descriptorLabelsFor } from "@/domain/descriptors";
 import { FileDrop } from "@/components/ui/FileDrop";
+import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { ContextMenu } from "@/components/ui/ContextMenu";
 import { DetailDrawer } from "@/components/ui/DetailDrawer";
 import { InventoryForm } from "@/components/inventory/InventoryForm";
@@ -36,7 +37,7 @@ import {
 import { inventoryTone, eoiTone, payItemTone, groupTone, isTestEditable } from "@/domain/status";
 import { formatDate, formatQty, formatNumber } from "@/lib/format";
 
-const TABS = ["Details", "Quantity Ledger", "Evidence of Inspection", "Pay Item Materials"] as const;
+const TABS = ["Details", "Quantity Ledger", "Evidence of Inspection", "Pay Item Materials", "History"] as const;
 type Tab = (typeof TABS)[number];
 
 const EMPTY_PAY_ITEMS: never[] = [];
@@ -106,6 +107,12 @@ export function ItemDetailDrawer({ itemId, onClose }: { itemId: string; onClose:
         {tab === "Quantity Ledger" && <LedgerTab detail={detail} itemId={itemId} payItems={payItems} canEdit={canEdit} />}
         {tab === "Evidence of Inspection" && <EOITab detail={detail} itemId={itemId} canEdit={canEdit} />}
         {tab === "Pay Item Materials" && <PayItemTab detail={detail} itemId={itemId} />}
+        {tab === "History" && (
+          <div className="space-y-2">
+            <p className="text-xs text-ink-faint">Append-only change history for this inventory record (P4).</p>
+            <HistoryPanel entity="inventoryItem" entityId={itemId} />
+          </div>
+        )}
       </DetailDrawer>
 
       {editing && (

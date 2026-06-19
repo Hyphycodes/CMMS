@@ -13,6 +13,8 @@ import { TabBar } from "@/components/ui/TabBar";
 import { Pill } from "@/components/ui/Pill";
 import { FieldGroup } from "@/components/ui/FieldGroup";
 import { FileDrop } from "@/components/ui/FileDrop";
+import { HistoryPanel } from "@/components/ui/HistoryPanel";
+import { contentHash } from "@/domain/history";
 import { IntelligentSearch } from "@/components/ui/IntelligentSearch";
 import { EditableRowTable, EditText, EditNumber, type EditableColumn } from "@/components/ui/EditableRowTable";
 import { CheckIcon } from "@/components/ui/icons";
@@ -169,6 +171,19 @@ function AuthDetail({ auth, canManage }: { auth: Authorization; canManage: boole
             {auth.type !== "Standard" && (
               <p className="text-xs text-amber-700">{auth.type} requires the extended approval chain ({AUTH_STEPS[auth.type].length} steps).</p>
             )}
+            {auth.status === "Published" && (
+              <p className="rounded-lg border border-line bg-canvas px-3 py-2 text-xs text-ink-soft">
+                Published content hash:{" "}
+                <span className="font-mono font-semibold text-ink">
+                  {contentHash({ items: auth.items, netChange: auth.netChange, approvals: auth.approvals })}
+                </span>{" "}
+                — tamper-evident (P4).
+              </p>
+            )}
+            <div>
+              <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-faint">History</div>
+              <HistoryPanel entity="authorization" entityId={auth.id} />
+            </div>
           </div>
         )}
 

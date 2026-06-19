@@ -11,6 +11,7 @@ import { TabBar } from "@/components/ui/TabBar";
 import { Pill } from "@/components/ui/Pill";
 import { CalendarIcon, SearchIcon } from "@/components/ui/icons";
 import { FileDrop } from "@/components/ui/FileDrop";
+import { contentHash } from "@/domain/history";
 import { formatDate } from "@/lib/format";
 
 const WEATHER = ["Clear", "Partly Cloudy", "Cloudy", "Rain", "Showers", "Snow", "Windy", "Fog"];
@@ -86,6 +87,11 @@ export function DiaryPage() {
             <Pill tone="green">Signed by {day.signedBy} · {formatDate(day.signedAt)}</Pill>
           ) : (
             <Pill tone="amber">Unsigned</Pill>
+          )}
+          {signed && (
+            <span className="font-mono text-[11px] text-ink-faint" title="Tamper-evident content hash of the signed diary (P4)">
+              #{contentHash({ weather: day.weather, controllingItem: day.controllingItem, contractorWork: day.contractorWork, projectLog: day.projectLog, signedBy: day.signedBy, signedAt: day.signedAt })}
+            </span>
           )}
           {inSuspension && <Pill tone="slate">Suspended — {inSuspension.reason}</Pill>}
           <div className="ml-auto flex items-center gap-2">

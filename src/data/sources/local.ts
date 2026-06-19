@@ -250,9 +250,13 @@ async function migrateLegacyBlob(): Promise<void> {
 }
 
 export function createLocalDataSource(): DataSource {
-  // append a write op, then refresh the materialized cache from the full log
+  // append a write op, then refresh the materialized cache from the full log.
+  // When the payload carries a provenance `version`, declare the baseVersion it
+  // was computed from so the log can reject a stale write (P6).
   async function commit(entity: DeltaEntity, entityId: string, payload: unknown, op: "upsert" | "delete" = "upsert"): Promise<void> {
-    await deltaLog.append({ id: opId(entity, entityId), entity, entityId, payload, op });
+    const v = (payload as { version?: number } | null)?.version;
+    const baseVersion = typeof v === "number" ? v - 1 : null;
+    await deltaLog.append({ id: opId(entity, entityId), entity, entityId, payload, op, baseVersion });
     writeCache(replay(deltaLog.all()));
   }
 

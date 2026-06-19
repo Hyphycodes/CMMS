@@ -195,7 +195,25 @@ function lsWrite(ops: DeltaOp[]): void {
 let cache: DeltaOp[] | null = null;
 let seqCounter = 0;
 const seenIds = new Set<string>();
+/** Latest committed entity version per `${entity}:${entityId}` (P6 guard). */
+const versionByKey = new Map<string, number>();
 const listeners = new Set<() => void>();
+
+/** P6 — thrown when a write is computed from a version another session has moved past. */
+export class StaleWriteError extends Error {
+  constructor(public key: string) {
+    super("stale write");
+    this.name = "StaleWriteError";
+  }
+}
+
+function trackVersion(op: DeltaOp): void {
+  const v = (op.payload as { version?: number } | null)?.version;
+  if (typeof v === "number") {
+    const key = `${op.entity}:${op.entityId}`;
+    versionByKey.set(key, Math.max(versionByKey.get(key) ?? 0, v));
+  }
+}
 
 function notify(): void {
   for (const l of listeners) l();
@@ -214,8 +232,24 @@ export async function init(): Promise<DeltaOp[]> {
   for (const op of ops) {
     seenIds.add(op.id);
     if (op.seq >= seqCounter) seqCounter = op.seq + 1;
+    trackVersion(op);
   }
   return cache;
+}
+
+/** Re-read the shared log from IndexedDB so another tab's writes are visible (P6). */
+async function refreshFromDb(): Promise<void> {
+  if (!hasIndexedDB()) return;
+  const ops = await idbAll();
+  cache = ops;
+  seenIds.clear();
+  versionByKey.clear();
+  seqCounter = 0;
+  for (const op of ops) {
+    seenIds.add(op.id);
+    if (op.seq >= seqCounter) seqCounter = op.seq + 1;
+    trackVersion(op);
+  }
 }
 
 /** All ops in seq order (in-memory; call `init()` first). */
@@ -243,6 +277,15 @@ export async function append(input: {
   if (seenIds.has(input.id)) {
     return (cache ?? []).find((o) => o.id === input.id)!;
   }
+  // P6 — stale-write guard. When the op declares the baseVersion it was computed
+  // from, refresh the shared log and reject if another session has moved past it.
+  if (input.baseVersion != null) {
+    await refreshFromDb();
+    const latest = versionByKey.get(`${input.entity}:${input.entityId}`);
+    if (latest !== undefined && input.baseVersion < latest) {
+      throw new StaleWriteError(`${input.entity}:${input.entityId}`);
+    }
+  }
   const online = typeof navigator === "undefined" ? true : navigator.onLine;
   const entry: DeltaOp = {
     id: input.id,
@@ -258,6 +301,7 @@ export async function append(input: {
     synced: online,
   };
   seenIds.add(entry.id);
+  trackVersion(entry);
   cache = [...(cache ?? []), entry];
   if (hasIndexedDB()) await idbPut([entry]);
   else lsWrite(cache);

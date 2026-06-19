@@ -1295,9 +1295,16 @@ async function persist(
   try {
     const ds = await getDataSource();
     await run(ds);
-  } catch {
+  } catch (e) {
     rollback();
-    get().pushToast("error", failMessage + " — change rolled back.");
+    if (e instanceof deltaLog.StaleWriteError) {
+      // P6 — another session moved this record's version; reject + re-pull latest.
+      get().pushToast("error", "This record changed in another session — reloading the latest.");
+      set({ status: "idle" });
+      void get().load();
+    } else {
+      get().pushToast("error", failMessage + " — change rolled back.");
+    }
   } finally {
     set({ savingCount: Math.max(0, get().savingCount - 1) });
   }
