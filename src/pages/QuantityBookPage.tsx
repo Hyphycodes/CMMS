@@ -24,7 +24,6 @@ import {
   EditSelect,
   type EditableColumn,
 } from "@/components/ui/EditableRowTable";
-import { ChevronDown } from "@/components/ui/icons";
 import { ContextMenu } from "@/components/ui/ContextMenu";
 import { payItemTone, groupTone } from "@/domain/status";
 import { formatMoney, formatNumber, formatDate } from "@/lib/format";
@@ -120,7 +119,6 @@ function PayItemEntry({ contractId, payItem }: { contractId: string; payItem: Pa
   const finalizePayItem = useStore((s) => s.finalizePayItem);
   const canAuthor = useStore((s) => s.can("author_contract"));
   const currentUser = useStore((s) => s.currentUser);
-  const [open, setOpen] = useState(true);
   const [menu, setMenu] = useState<{ x: number; y: number; id: string } | null>(null);
 
   const rows = useMemo(
@@ -166,21 +164,18 @@ function PayItemEntry({ contractId, payItem }: { contractId: string; payItem: Pa
   return (
     <div className="space-y-4">
       <section className="overflow-hidden rounded-card border border-line bg-surface">
-        <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center gap-2 px-4 py-2.5 text-left hover:bg-canvas">
-          <ChevronDown className={["text-base text-ink-faint transition", open ? "" : "-rotate-90"].join(" ")} />
+        <div className="flex items-center gap-2 px-4 py-2.5">
           <span className="text-sm font-semibold text-ink">Item Summary</span>
           {payItem.final && <Pill tone="green">Final</Pill>}
-        </button>
-        {open && (
-          <div className="grid grid-cols-2 gap-x-6 gap-y-3 border-t border-line px-4 py-3 text-sm sm:grid-cols-4">
-            <Metric label="Contract Unit" value={payItem.unit} />
-            <Metric label="Unit Price" value={formatMoney(payItem.unitPrice)} />
-            <Metric label="Awarded Qty" value={`${formatNumber(payItem.awardedQuantity)} ${payItem.unit}`} />
-            <Metric label="Placed to Date" value={`${formatNumber(placedToDate)} ${payItem.unit}`} />
-            <Metric label="Fund Key" value={payItem.fundKey ?? "—"} />
-            <Metric label="Associated Authorizations" value="see Authorizations" />
-          </div>
-        )}
+        </div>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-3 border-t border-line px-4 py-3 text-sm sm:grid-cols-4">
+          <Metric label="Contract Unit" value={payItem.unit} />
+          <Metric label="Unit Price" value={formatMoney(payItem.unitPrice)} />
+          <Metric label="Awarded Qty" value={`${formatNumber(payItem.awardedQuantity)} ${payItem.unit}`} />
+          <Metric label="Placed to Date" value={`${formatNumber(placedToDate)} ${payItem.unit}`} />
+          <Metric label="Fund Key" value={payItem.fundKey ?? "—"} />
+          <Metric label="Associated Authorizations" value="see Authorizations" />
+        </div>
       </section>
 
       <div>

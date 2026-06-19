@@ -1,10 +1,58 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useStore } from "@/store/store";
 import { Spinner } from "@/components/ui/Loading";
 import { ChevronDown, UsersIcon } from "@/components/ui/icons";
 import { ROLE_LABELS } from "@/auth/permissions";
 import { ContractSelector } from "./ContractSelector";
+
+// Brief 23 — the top-bar mega-menu: every global surface in one place, beside the
+// IntelligentSearch project picker.
+const MENU_GROUPS: { heading: string; links: { to: string; label: string }[] }[] = [
+  { heading: "Home", links: [{ to: "/", label: "All contracts" }, { to: "/inbox", label: "Review inbox" }] },
+  {
+    heading: "Materials",
+    links: [
+      { to: "/materials/inventory", label: "Inventory (search)" },
+      { to: "/materials/acceptance", label: "Acceptance" },
+      { to: "/samples", label: "Samples" },
+      { to: "/materials/definitions", label: "Material Definition" },
+      { to: "/materials/descriptions", label: "Descriptions" },
+      { to: "/materials/vendors", label: "Vendors" },
+      { to: "/materials/inspectors", label: "Inspectors" },
+      { to: "/materials/laboratory", label: "Laboratory" },
+      { to: "/materials/mix-designs", label: "Mix Design" },
+    ],
+  },
+];
+
+function MegaMenu({ onClose }: { onClose: () => void }) {
+  const navigate = useNavigate();
+  return (
+    <>
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <div className="absolute left-0 top-[52px] z-50 grid w-[520px] max-w-[92vw] grid-cols-3 gap-4 rounded-xl border border-line bg-surface p-4 shadow-2xl">
+        {MENU_GROUPS.map((g) => (
+          <div key={g.heading}>
+            <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">{g.heading}</div>
+            <ul className="space-y-0.5">
+              {g.links.map((l) => (
+                <li key={l.to}>
+                  <button
+                    onClick={() => { navigate(l.to); onClose(); }}
+                    className="block w-full rounded-md px-2 py-1 text-left text-sm text-ink-soft transition hover:bg-accent-soft hover:text-accent"
+                  >
+                    {l.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
 
 export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   const { contractId } = useParams();
@@ -17,6 +65,7 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   const currentUser = useStore((s) => s.currentUser);
   const setCurrentUser = useStore((s) => s.setCurrentUser);
   const [selectorOpen, setSelectorOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <header className="col-span-1 flex items-center gap-2 border-b border-line bg-surface px-3 sm:gap-3 sm:px-4 lg:col-span-2">
@@ -44,8 +93,21 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
 
       <div className="mx-1 hidden h-6 w-px bg-line sm:block" />
 
+      {/* Mega-menu (brief 23) */}
+      <div className="relative hidden sm:block">
+        <button
+          onClick={() => setMenuOpen((v) => !v)}
+          className="flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm font-medium text-ink transition hover:border-line-strong hover:bg-canvas"
+        >
+          Menu
+          <ChevronDown className="text-base text-ink-faint" />
+        </button>
+        {menuOpen && <MegaMenu onClose={() => setMenuOpen(false)} />}
+      </div>
+
       <button
         onClick={() => setSelectorOpen(true)}
+        title="Search projects by number, county, or work type"
         className="flex min-w-0 items-center gap-2 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm transition hover:border-line-strong hover:bg-canvas"
       >
         {contract ? (

@@ -5,9 +5,9 @@ import { type Field, formatField, isEmptyValue } from "@/lib/fields";
 export function FieldGroup({
   title,
   fields,
-  showEmpty = false,
+  showEmpty = true,
   defaultOpen = true,
-  collapsible = true,
+  collapsible = false, // brief 23 — no accordions anywhere; render as a static section
   columns = 3,
   children,
 }: {

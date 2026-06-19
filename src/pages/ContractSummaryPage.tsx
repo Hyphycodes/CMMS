@@ -8,6 +8,7 @@ import { Pill } from "@/components/ui/Pill";
 import { FieldGroup } from "@/components/ui/FieldGroup";
 import { FileDrop } from "@/components/ui/FileDrop";
 import { DataGrid } from "@/components/ui/DataGrid";
+import { TabBar } from "@/components/ui/TabBar";
 import { EditText, EditNumber, EditDate } from "@/components/ui/EditableRowTable";
 import { IntelligentSearch } from "@/components/ui/IntelligentSearch";
 import { CONTRACTORS, DESIGNER_FIRMS } from "@/data/reference";
@@ -193,43 +194,41 @@ export function ContractSummaryPage() {
           </div>
         </div>
 
-        <FlatSection title="Summary">
-          <SummaryTab contract={contract} />
-        </FlatSection>
-        <FlatSection title="Insurance">
-          <InsuranceTab contract={contract} />
-        </FlatSection>
-        <FlatSection title="Project Documents" count={contract.projectDocuments.length}>
-          <DocumentsTab contract={contract} />
-        </FlatSection>
-        <FlatSection title="Subcontracting" count={contract.subcontractors.length}>
-          <SubcontractingTab contract={contract} />
-        </FlatSection>
-        <FlatSection title="Final Review">
-          <FinalReviewTab contract={contract} />
-        </FlatSection>
+        <ContractTabs contract={contract} />
       </div>
     </div>
   );
 }
 
-/** A flat, always-visible section header + body (replaces the old tab pages). */
-function FlatSection({ title, count, children }: { title: string; count?: number; children: React.ReactNode }) {
+/** Legacy is tabbed — Summary · Insurance · Project Documents · Subcontracting ·
+ *  Final Review. No collapsables anywhere; every field renders always (brief 23). */
+const CONTRACT_TABS = ["Summary", "Insurance", "Project Documents", "Subcontracting", "Final Review"] as const;
+type ContractTab = (typeof CONTRACT_TABS)[number];
+
+function ContractTabs({ contract }: { contract: Contract }) {
+  const [tab, setTab] = useState<ContractTab>("Summary");
+  const tabs = CONTRACT_TABS.map((t) => ({
+    id: t,
+    label: t,
+    count: t === "Project Documents" ? contract.projectDocuments.length : t === "Subcontracting" ? contract.subcontractors.length : undefined,
+  }));
   return (
-    <section>
-      <div className="mb-3 flex items-center gap-2 border-b border-line pb-2">
-        <h2 className="text-base font-semibold text-ink">{title}</h2>
-        {count !== undefined && <span className="text-xs text-ink-faint tabular-nums">{count}</span>}
+    <div>
+      <TabBar<ContractTab> tabs={tabs} active={tab} onChange={setTab} />
+      <div className="pt-4">
+        {tab === "Summary" && <SummaryTab contract={contract} />}
+        {tab === "Insurance" && <InsuranceTab contract={contract} />}
+        {tab === "Project Documents" && <DocumentsTab contract={contract} />}
+        {tab === "Subcontracting" && <SubcontractingTab contract={contract} />}
+        {tab === "Final Review" && <FinalReviewTab contract={contract} />}
       </div>
-      {children}
-    </section>
+    </div>
   );
 }
 
 // --- Summary (unchanged) ---------------------------------------------------
 
 function SummaryTab({ contract }: { contract: Contract }) {
-  const [showEmpty, setShowEmpty] = useState(false);
   const setContractSummary = useStore((s) => s.setContractSummary);
   const canEdit = useStore((s) => s.can("author_contract"));
   const authCount = useStore((s) => s.authorizationsForContract(contract.id).length);
@@ -247,15 +246,8 @@ function SummaryTab({ contract }: { contract: Contract }) {
 
   return (
     <>
-      <div className="flex items-center justify-end">
-        <label className="flex items-center gap-2 text-sm text-ink-soft">
-          <input type="checkbox" className="h-4 w-4 cursor-pointer accent-accent" checked={showEmpty} onChange={(e) => setShowEmpty(e.target.checked)} />
-          Show empty fields
-        </label>
-      </div>
-
       {/* Editable working submittals (legacy editable; calendar pickers) — brief 19 */}
-      <section className="mt-3 overflow-hidden rounded-card border border-line bg-surface">
+      <section className="overflow-hidden rounded-card border border-line bg-surface">
         <div className="border-b border-line px-4 py-2.5 text-sm font-semibold text-ink">
           Working Submittals {canEdit ? <span className="ml-1 text-[11px] font-normal text-ink-faint">(editable)</span> : null}
         </div>
@@ -291,7 +283,7 @@ function SummaryTab({ contract }: { contract: Contract }) {
 
       <div className="mt-3 space-y-3">
         {CARDS.map((card) => (
-          <SummaryCard key={card.title} card={card} summary={summary} showEmpty={showEmpty} />
+          <SummaryCard key={card.title} card={card} summary={summary} />
         ))}
       </div>
     </>
@@ -307,17 +299,15 @@ function ValueStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** Flat, always-visible summary group (no collapse). */
-function SummaryCard({ card, summary, showEmpty }: { card: CardDef; summary: ContractSummary; showEmpty: boolean }) {
-  const visibleFields = card.fields.filter((f) => showEmpty || !isEmpty(summary[f.key]));
-  if (visibleFields.length === 0) return null;
+/** Flat, always-visible summary group (no collapse, every field shown — brief 23). */
+function SummaryCard({ card, summary }: { card: CardDef; summary: ContractSummary }) {
   return (
     <section className="overflow-hidden rounded-card border border-line bg-surface">
       <div className="border-b border-line px-4 py-2.5">
         <span className="text-sm font-semibold text-ink">{card.title}</span>
       </div>
       <div className="grid grid-cols-1 gap-x-8 gap-y-4 px-4 py-4 sm:grid-cols-2 lg:grid-cols-3">
-        {visibleFields.map((f) => (
+        {card.fields.map((f) => (
           <div key={f.label} className="min-w-0">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">{f.label}</div>
             <div className={["truncate text-sm text-ink", f.type === "mono" ? "font-mono" : ""].join(" ")} title={String(summary[f.key] ?? "")}>
