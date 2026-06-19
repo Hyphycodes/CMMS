@@ -12,6 +12,7 @@ import { EditableRowTable, EditText, type EditableColumn } from "@/components/ui
 import { CheckIcon, XIcon, FileIcon, PlusIcon } from "@/components/ui/icons";
 import { sampleTone, isTestEditable } from "@/domain/status";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
+import { QmpPackagePanel } from "@/components/samples/QmpPackage";
 
 const TESTING_STATUSES = SAMPLE_STATUSES.filter((s) => s !== "Approved" && s !== "Rejected");
 
@@ -49,6 +50,11 @@ export function SampleDetailDrawer({ sampleId, onClose }: { sampleId: string; on
     () => testsList.filter((t) => t.sampleId === sampleId).sort((a, b) => a.series - b.series),
     [testsList, sampleId],
   );
+  // M2 — QMP package shows only for HMA / PCC materials.
+  const qmpFamily = useMemo(() => {
+    const fam = MATERIALS.find((m) => m.code === sample?.materialCode)?.family;
+    return fam === "HMA" || fam === "Concrete" ? fam : null;
+  }, [sample?.materialCode]);
 
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -173,6 +179,9 @@ export function SampleDetailDrawer({ sampleId, onClose }: { sampleId: string; on
 
             {/* Tests */}
             <TestsSection sample={sample} tests={tests} />
+
+            {/* QMP package — HMA / PCC only (M2) */}
+            {qmpFamily && <QmpPackagePanel sample={sample} tests={tests} family={qmpFamily} />}
 
             {/* Documents */}
             <DocumentsSection
