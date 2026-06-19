@@ -24,7 +24,7 @@ const MENU_GROUPS: { heading: string; links: { to: string; label: string }[] }[]
       { to: "/materials/mix-designs", label: "Mix Design" },
     ],
   },
-  { heading: "Reporting", links: [{ to: "/import-log", label: "Import Log" }] },
+  { heading: "Reporting", links: [{ to: "/reports", label: "Reports" }, { to: "/import-log", label: "Import Log" }] },
 ];
 
 function MegaMenu({ onClose }: { onClose: () => void }) {
