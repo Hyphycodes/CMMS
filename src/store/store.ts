@@ -131,8 +131,9 @@ interface State {
   authorizationsForContract(contractId: string): Authorization[];
 
   // mutations (optimistic)
-  setInventoryStatus(ids: string[], status: InventoryStatus, opts?: { note?: string }): void;
+  setInventoryStatus(ids: string[], status: InventoryStatus | null, opts?: { note?: string }): void;
   setInventoryNote(id: string, note: string): void;
+  setInventoryActive(id: string, active: boolean): void;
   setEoiApproval(itemId: string, eoiId: string, approval: EOIApproval, note?: string): void;
 
   // inventory document attachments (in-memory; brief 61D34 task 4a)
@@ -395,8 +396,8 @@ export const useStore = create<State>((set, get) => ({
     if (ids.length === 0) return;
     const idSet = new Set(ids);
     const now = Date.now();
-    const prev = new Map<string, { status: InventoryStatus; readyAt: number | null; note: string }>();
-    const updates: { id: string; status: InventoryStatus; readyAt: number | null }[] = [];
+    const prev = new Map<string, { status: InventoryStatus | null; readyAt: number | null; note: string }>();
+    const updates: { id: string; status: InventoryStatus | null; readyAt: number | null }[] = [];
 
     const items = get().items.map((it) => {
       if (!idSet.has(it.id)) return it;
@@ -430,6 +431,18 @@ export const useStore = create<State>((set, get) => ({
     void persist(get, set, async (ds) => ds.persistInventoryNote(id, note), () => {
       set({ items: get().items.map((it) => (it.id === id ? { ...it, note: prev } : it)) });
     }, "Couldn't save note");
+  },
+
+  setInventoryActive(id, active) {
+    if (!canDo(get().currentUser, "create_inventory")) {
+      get().pushToast("error", "Your role can't edit inventory.");
+      return;
+    }
+    const prev = get().items.find((i) => i.id === id)?.active;
+    set({ items: get().items.map((it) => (it.id === id ? { ...it, active } : it)) });
+    void persist(get, set, async (ds) => ds.persistInventoryActive(id, active), () => {
+      set({ items: get().items.map((it) => (it.id === id ? { ...it, active: prev } : it)) });
+    }, "Couldn't save Active/Inactive");
   },
 
   setEoiApproval(itemId, eoiId, approval, note = "") {

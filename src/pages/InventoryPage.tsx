@@ -43,7 +43,7 @@ export function InventoryPage() {
   const counts = useMemo(() => {
     const c: Record<string, number> = { All: baseItems.length };
     for (const s of INVENTORY_STATUSES) c[s] = 0;
-    for (const it of baseItems) c[it.status]++;
+    for (const it of baseItems) if (it.status) c[it.status]++;
     return c;
   }, [baseItems]);
 

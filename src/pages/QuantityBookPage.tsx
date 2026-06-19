@@ -4,7 +4,7 @@
  * Material Associations (Create → pre-linked inventory). Replaces the stub.
  */
 import { useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useStore } from "@/store/store";
 import { buildOverlaidDetail } from "@/data/seed/generate";
 import { MATERIALS } from "@/data/reference";
@@ -34,11 +34,13 @@ type Tab = (typeof TABS)[number];
 
 export function QuantityBookPage() {
   const { contractId = "" } = useParams();
+  const [searchParams] = useSearchParams();
   const contract = useStore((s) => s.contract(contractId));
   const canAccess = useStore((s) => s.canAccessContract(contractId));
   const payItemsByContract = useStore((s) => s.payItemsByContract);
   const payItems = useMemo(() => payItemsByContract.get(contractId) ?? [], [payItemsByContract, contractId]);
-  const [selected, setSelected] = useState<string>("");
+  // 16b — deep link from Inventory Details "Go to": ?payItem=<number> preselects.
+  const [selected, setSelected] = useState<string>(searchParams.get("payItem") ?? "");
   const [tab, setTab] = useState<Tab>("Pay Item Entry");
 
   const current = payItems.find((p) => p.number === selected) ?? payItems[0];

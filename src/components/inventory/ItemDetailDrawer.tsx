@@ -82,7 +82,7 @@ export function ItemDetailDrawer({ itemId, onClose }: { itemId: string; onClose:
         eyebrow={
           <>
             <span className="font-mono text-sm text-ink-faint">Inventory {item.inventoryId}</span>
-            <Pill tone={inventoryTone(item.status)}>{item.status}</Pill>
+            <Pill tone={inventoryTone(item.status)}>{item.status ?? "No status"}</Pill>
           </>
         }
         title={
@@ -100,7 +100,7 @@ export function ItemDetailDrawer({ itemId, onClose }: { itemId: string; onClose:
         onClose={onClose}
         width={1040}
       >
-        {tab === "Details" && <DetailsTab detail={detail} canEdit={canEdit} onEdit={() => setEditing(true)} />}
+        {tab === "Details" && <DetailsTab detail={detail} canEdit={canEdit} onEdit={() => setEditing(true)} onGoToPayItems={() => setTab("Pay Item Materials")} />}
         {tab === "Quantity Ledger" && <LedgerTab detail={detail} itemId={itemId} payItems={payItems} canEdit={canEdit} />}
         {tab === "Evidence of Inspection" && <EOITab detail={detail} itemId={itemId} canEdit={canEdit} />}
         {tab === "Pay Item Materials" && <PayItemTab detail={detail} itemId={itemId} />}
@@ -137,9 +137,10 @@ function StatusControl({
   return (
     <div className="flex flex-col items-end gap-1">
       <select
-        value={status}
+        value={status ?? ""}
         onChange={(e) => {
-          const next = e.target.value as InventoryDetail["status"];
+          const raw = e.target.value;
+          const next = (raw === "" ? null : raw) as InventoryDetail["status"];
           if (next === "Review Complete" && blockComplete) {
             pushToast("error", `${unresolved} EOI row${unresolved === 1 ? "" : "s"} still need approval before Review Complete.`);
             return;
@@ -152,6 +153,8 @@ function StatusControl({
         }}
         className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm font-medium outline-none focus:border-accent"
       >
+        {/* legacy allows a blank Inventory Status (brief 16) */}
+        <option value="">— No status —</option>
         {INVENTORY_STATUSES.map((s) => (
           <option key={s} value={s} disabled={s === "Review Complete" && blockComplete}>
             {s}
@@ -165,14 +168,48 @@ function StatusControl({
 
 // --- Details ---------------------------------------------------------------
 
-function DetailsTab({ detail, canEdit, onEdit }: { detail: InventoryDetail; canEdit: boolean; onEdit: () => void }) {
+function DetailsTab({
+  detail,
+  canEdit,
+  onEdit,
+  onGoToPayItems,
+}: {
+  detail: InventoryDetail;
+  canEdit: boolean;
+  onEdit: () => void;
+  onGoToPayItems: () => void;
+}) {
   const setNote = useStore((s) => s.setInventoryNote);
+  const setActive = useStore((s) => s.setInventoryActive);
   const [note, setLocalNote] = useState(detail.note);
   useEffect(() => setLocalNote(detail.note), [detail.id, detail.note]);
 
+  const active = detail.active !== false; // undefined ⇒ active
+  // Quantity-ledger Rec/Adj total (legacy summary line above the grid).
+  const ledgerTotal = detail.ledger
+    .filter((l) => l.type === "Received" || l.type === "Adjustment")
+    .reduce((s, l) => s + l.transactionQty, 0);
+
   return (
     <div className="space-y-5">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-5">
+          <Field label="Inventory Status" value={detail.status ?? "—"} />
+          <Field label="Location Type" value={detail.locationType || "—"} hint="synced" />
+          <label className="flex items-center gap-2 text-sm">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Active</span>
+            <button
+              role="switch"
+              aria-checked={active}
+              disabled={!canEdit}
+              onClick={() => setActive(detail.id, !active)}
+              className={`relative h-5 w-9 rounded-full transition ${active ? "bg-accent" : "bg-line-strong"} disabled:opacity-50`}
+            >
+              <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition ${active ? "left-[18px]" : "left-0.5"}`} />
+            </button>
+            <span className="text-xs text-ink-soft">{active ? "Active" : "Inactive"}</span>
+          </label>
+        </div>
         {canEdit && (
           <button onClick={onEdit} className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink transition hover:bg-canvas">
             Edit details
@@ -188,11 +225,63 @@ function DetailsTab({ detail, canEdit, onEdit }: { detail: InventoryDetail; canE
         <Field label="Producer Name" value={detail.producerName} />
         <Field label="Supplier Number" value={detail.supplierNumber} mono />
         <Field label="Supplier Name" value={detail.supplierName} />
-        {detail.locationType && <Field label="Location Type" value={detail.locationType} />}
         {detail.effectiveDate && <Field label="Effective Date" value={formatDate(detail.effectiveDate)} />}
         {detail.expirationDate && <Field label="Expiration Date" value={formatDate(detail.expirationDate)} />}
         <Field label="Contract Number" value={detail.contractNumber} mono hint="read-only" />
-        <Field label="Linked Pay Items" value={detail.payItemNumbers.join(", ") || "—"} mono />
+      </div>
+
+      {/* Pay-item association grid (legacy Details tab, brief 16) */}
+      <div>
+        <div className="mb-1 flex items-baseline justify-between">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Pay Item Associations</div>
+          <div className="text-xs text-ink-soft">
+            Total Qty: <span className="font-medium tabular-nums">{formatNumber(ledgerTotal, 4)}</span> · Material Unit:{" "}
+            <span className="font-medium">{detail.materialUnit}</span>
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-lg border border-line">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-canvas text-left text-[11px] uppercase tracking-wide text-ink-faint">
+                <th className="px-3 py-2 font-semibold">Pay Item</th>
+                <th className="px-3 py-2 text-right font-semibold">Material Rec/Adj Quantity</th>
+                <th className="px-3 py-2 text-center font-semibold">Item Association Status</th>
+                <th className="px-3 py-2 font-semibold"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {detail.payItemMaterials.map((r) => {
+                const approved = r.payItemMaterialStatus === "Approved" || r.payItemMaterialStatus === "Approved as Exception";
+                return (
+                  <tr key={r.payItemNumber} className="border-t border-line">
+                    <td className="px-3 py-2">
+                      <span className="font-mono font-medium">{r.payItemNumber}</span>
+                      <span className="ml-2 text-ink-soft">{r.payItemDescription}</span>
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatNumber(r.materialQuantityProvided, 4)}</td>
+                    <td className="px-3 py-2 text-center">
+                      {approved ? (
+                        <span className="font-semibold text-green-600" title={r.payItemMaterialStatus}>✓</span>
+                      ) : (
+                        <span className="font-semibold text-red-600" title={r.payItemMaterialStatus}>✗</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      <button onClick={onGoToPayItems} className="text-xs font-medium text-accent hover:underline">
+                        Go to →
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {detail.payItemMaterials.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-3 py-3 text-center text-ink-faint">No pay items associated.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <MaterialSpec materialCode={detail.materialCode} />

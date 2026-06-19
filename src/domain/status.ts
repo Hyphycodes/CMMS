@@ -42,7 +42,7 @@ const SAMPLE_TONE: Record<SampleStatus, PillTone> = {
   Rejected: "red",
 };
 
-export const inventoryTone = (s: InventoryStatus): PillTone => INVENTORY_TONE[s];
+export const inventoryTone = (s: InventoryStatus | null): PillTone => (s ? INVENTORY_TONE[s] : "slate");
 export const eoiTone = (s: EOIApproval): PillTone => EOI_TONE[s];
 export const payItemTone = (s: PayItemMaterialStatus): PillTone => PAY_ITEM_TONE[s];
 export const groupTone = (s: GroupStatus): PillTone => GROUP_TONE[s];

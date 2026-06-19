@@ -263,7 +263,8 @@ export interface InventoryItem extends Provenance {
   producerName: string;
   supplierNumber: string;
   supplierName: string;
-  status: InventoryStatus;
+  /** null ⇒ blank Inventory Status (legacy allows it); excluded from review inbox. */
+  status: InventoryStatus | null;
   note: string;
   payItemNumbers: string[]; // linked pay items (Details tab)
   /** epoch ms the item entered "Ready for Review" — drives "oldest waiting first". */

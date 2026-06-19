@@ -61,7 +61,7 @@ export const inventoryColumns: ColumnDef<InventoryItem>[] = [
     accessorKey: "status",
     header: "Inventory Status",
     size: 170,
-    cell: ({ row }) => <Pill tone={inventoryTone(row.original.status)}>{row.original.status}</Pill>,
+    cell: ({ row }) => <Pill tone={inventoryTone(row.original.status)}>{row.original.status ?? "—"}</Pill>,
   },
   {
     id: "payItems",

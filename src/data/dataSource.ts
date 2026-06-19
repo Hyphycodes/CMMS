@@ -74,7 +74,7 @@ export interface LoadResult {
 
 export interface InventoryStatusUpdate {
   id: string;
-  status: InventoryStatus;
+  status: InventoryStatus | null;
   readyAt: number | null;
 }
 

@@ -45,7 +45,7 @@ import type { DeltaOp, DeltaEntity } from "../deltaLog";
 const STORAGE_KEY = "proof:deltas:v1";
 
 interface StoredDeltas {
-  inventoryStatus: Record<string, { status: InventoryStatus; readyAt: number | null }>;
+  inventoryStatus: Record<string, { status: InventoryStatus | null; readyAt: number | null }>;
   inventoryNote: Record<string, string>;
   inventoryActive: Record<string, boolean>;
   eoiApproval: Record<string, EoiDelta>;
