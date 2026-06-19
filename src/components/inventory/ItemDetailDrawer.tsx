@@ -22,6 +22,7 @@ import {
 import { Pill } from "@/components/ui/Pill";
 import { canMarkReviewComplete, unresolvedEoiCount } from "@/domain/rules";
 import { FileDrop } from "@/components/ui/FileDrop";
+import { ContextMenu } from "@/components/ui/ContextMenu";
 import { DetailDrawer } from "@/components/ui/DetailDrawer";
 import { InventoryForm } from "@/components/inventory/InventoryForm";
 import {
@@ -354,28 +355,31 @@ function LedgerTab({
   const received = rows.filter((l) => l.type === "Received").reduce((s, l) => s + l.transactionQty, 0);
   const payItemOptions = detail.payItemNumbers.length ? detail.payItemNumbers : payItems.map((p) => p.number);
 
+  const [menu, setMenu] = useState<{ x: number; y: number; id: string } | null>(null);
+
   const commit = (next: LedgerEntry[]) => setLedger(itemId, next);
   const editRow = (id: string, patch: Partial<LedgerEntry>) =>
     commit(rows.map((r) => (String(r.id) === id ? { ...r, ...patch } : r)));
-  const addRow = () => {
-    const nextId = rows.length ? Math.max(...rows.map((r) => r.id)) + 1 : 1;
-    commit([
-      ...rows,
-      {
-        id: nextId,
-        date: new Date().toISOString().slice(0, 10),
-        payItemNumber: payItemOptions[0] ?? "",
-        desc1: "",
-        desc2: "",
-        desc3: "",
-        mixDesign: "",
-        batchLotHeat: "",
-        type: "Received",
-        transactionQty: 0,
-      },
-    ]);
+  const makeRow = (): LedgerEntry => ({
+    id: rows.length ? Math.max(...rows.map((r) => r.id)) + 1 : 1,
+    date: new Date().toISOString().slice(0, 10),
+    payItemNumber: payItemOptions[0] ?? "",
+    desc1: "",
+    desc2: "",
+    desc3: "",
+    mixDesign: "",
+    batchLotHeat: "",
+    type: "Received",
+    transactionQty: 0,
+  });
+  const addRow = () => commit([...rows, makeRow()]);
+  // Right-click "Add row here" — insert directly after the targeted row (brief 21).
+  const addRowAfter = (id: string) => {
+    const idx = rows.findIndex((r) => String(r.id) === id);
+    const next = rows.slice();
+    next.splice(idx + 1, 0, makeRow());
+    commit(next);
   };
-
   const deleteRow = (id: string) => commit(rows.filter((r) => String(r.id) !== id));
 
   // Fitted grid: identity (Id) is frozen left; flexible text columns shrink so
@@ -421,6 +425,11 @@ function LedgerTab({
             rows.map((r) => (
               <div
                 key={r.id}
+                onContextMenu={(e) => {
+                  if (!canEdit) return;
+                  e.preventDefault();
+                  setMenu({ x: e.clientX, y: e.clientY, id: String(r.id) });
+                }}
                 className="grid items-center gap-2 border-b border-line/70 px-3 py-1.5 text-sm last:border-b-0"
                 style={{ gridTemplateColumns: template }}
               >
@@ -472,6 +481,18 @@ function LedgerTab({
           + Add ledger row
         </button>
       )}
+
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+          items={[
+            { label: "Add row here", onClick: () => addRowAfter(menu.id) },
+            { label: "Remove row", danger: true, onClick: () => deleteRow(menu.id) },
+          ]}
+        />
+      )}
     </div>
   );
 }
@@ -494,46 +515,70 @@ function EOITab({ detail, itemId, canEdit }: { detail: InventoryDetail; itemId: 
     [samplesList],
   );
 
+  const [menu, setMenu] = useState<{ x: number; y: number; id: string } | null>(null);
+
   const commit = (next: EOIEntry[]) => setEoi(itemId, next);
   const editRow = (id: string, patch: Partial<EOIEntry>) => commit(rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-  const addRow = () => {
-    commit([
-      ...rows,
-      {
-        id: `${itemId}_eoi_new_${Date.now()}`,
-        ledgerIds: ledgerIds.length ? [ledgerIds[0]] : [],
-        actualEoi: [],
-        actualMoa: [],
-        testId: "",
-        approval: "Unset",
-        note: "",
-        hasDocument: false,
-      },
-    ]);
+  const makeRow = (): EOIEntry => ({
+    id: `${itemId}_eoi_new_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    ledgerIds: ledgerIds.length ? [ledgerIds[0]] : [],
+    actualEoi: [],
+    actualMoa: [],
+    testId: "",
+    approval: "Unset",
+    note: "",
+    hasDocument: false,
+  });
+  const addRow = () => commit([...rows, makeRow()]);
+  const addRowAfter = (id: string) => {
+    const idx = rows.findIndex((r) => r.id === id);
+    const next = rows.slice();
+    next.splice(idx + 1, 0, makeRow());
+    commit(next);
   };
+  const deleteRow = (id: string) => commit(rows.filter((r) => r.id !== id));
 
   return (
     <div className="space-y-3">
       <p className="text-xs text-ink-soft">
         Every Ledger ID row needs approval before the inventory can be completed. Approved · Approved as
-        Exception · Rejected (a note is required for exceptions and rejections).
+        Exception · Rejected (a note is required for exceptions and rejections). Right-click a row to add/remove.
       </p>
       <div className="space-y-2.5">
         {rows.map((row) => (
-          <EOIRow
+          <div
             key={row.id}
-            row={row}
-            itemId={itemId}
-            ledgerIds={ledgerIds}
-            approvedTestIds={approvedTestIds}
-            testIdLocked={!!row.testId && lockedTestIds.has(row.testId)}
-            canEdit={canEdit}
-            onEditRow={editRow}
-            onDelete={canEdit ? () => commit(rows.filter((r) => r.id !== row.id)) : undefined}
-          />
+            onContextMenu={(e) => {
+              if (!canEdit) return;
+              e.preventDefault();
+              setMenu({ x: e.clientX, y: e.clientY, id: row.id });
+            }}
+          >
+            <EOIRow
+              row={row}
+              itemId={itemId}
+              ledgerIds={ledgerIds}
+              approvedTestIds={approvedTestIds}
+              testIdLocked={!!row.testId && lockedTestIds.has(row.testId)}
+              canEdit={canEdit}
+              onEditRow={editRow}
+              onDelete={canEdit ? () => deleteRow(row.id) : undefined}
+            />
+          </div>
         ))}
         {rows.length === 0 && <p className="text-sm text-ink-soft">No EOI rows yet.</p>}
       </div>
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+          items={[
+            { label: "Add row here", onClick: () => addRowAfter(menu.id) },
+            { label: "Remove row", danger: true, onClick: () => deleteRow(menu.id) },
+          ]}
+        />
+      )}
       {canEdit && (
         <button
           onClick={addRow}

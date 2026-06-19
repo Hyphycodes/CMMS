@@ -25,6 +25,7 @@ import {
   type EditableColumn,
 } from "@/components/ui/EditableRowTable";
 import { ChevronDown } from "@/components/ui/icons";
+import { ContextMenu } from "@/components/ui/ContextMenu";
 import { payItemTone, groupTone } from "@/domain/status";
 import { formatMoney, formatNumber, formatDate } from "@/lib/format";
 import { FUND_KEYS } from "@/config"; // IDOT-SPECIFIC — via the config boundary (F5)
@@ -120,6 +121,7 @@ function PayItemEntry({ contractId, payItem }: { contractId: string; payItem: Pa
   const canAuthor = useStore((s) => s.can("author_contract"));
   const currentUser = useStore((s) => s.currentUser);
   const [open, setOpen] = useState(true);
+  const [menu, setMenu] = useState<{ x: number; y: number; id: string } | null>(null);
 
   const rows = useMemo(
     () => placementsList.filter((p) => p.contractId === contractId && p.payItemNumber === payItem.number),
@@ -200,11 +202,23 @@ function PayItemEntry({ contractId, payItem }: { contractId: string; payItem: Pa
           onEdit={edit}
           onAdd={canAuthor ? addRow : undefined}
           onDelete={canAuthor ? deletePlacement : undefined}
+          onRowContextMenu={canAuthor ? (e, id) => { e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, id }); } : undefined}
           addLabel="+ Add placement"
           readOnly={!canAuthor}
           emptyMessage="No placements recorded."
         />
       </div>
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+          items={[
+            { label: "Add placement here", onClick: addRow },
+            { label: "Remove placement", danger: true, onClick: () => deletePlacement(menu.id) },
+          ]}
+        />
+      )}
     </div>
   );
 }

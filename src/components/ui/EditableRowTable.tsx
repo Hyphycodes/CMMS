@@ -7,7 +7,7 @@
  *
  * Powers the writable Quantity Ledger + EOI (05), placements (08), tests (04).
  */
-import type { ReactNode } from "react";
+import type { ReactNode, MouseEvent } from "react";
 
 export interface EditableColumn<T> {
   key: string;
@@ -26,6 +26,8 @@ interface Props<T> {
   onEdit: (id: string, patch: Partial<T>) => void;
   onAdd?: () => void;
   onDelete?: (id: string) => void;
+  /** Right-click a row → contextual menu (brief 21). Receives the row id. */
+  onRowContextMenu?: (e: MouseEvent, id: string) => void;
   addLabel?: string;
   readOnly?: boolean;
   emptyMessage?: string;
@@ -38,6 +40,7 @@ export function EditableRowTable<T>({
   onEdit,
   onAdd,
   onDelete,
+  onRowContextMenu,
   addLabel = "+ Add row",
   readOnly = false,
   emptyMessage = "No records to display.",
@@ -73,6 +76,7 @@ export function EditableRowTable<T>({
               return (
                 <div
                   key={id}
+                  onContextMenu={onRowContextMenu ? (e) => onRowContextMenu(e, id) : undefined}
                   className="grid items-center gap-2 border-b border-line/70 px-3 py-1.5 text-sm last:border-b-0"
                   style={{ gridTemplateColumns: template }}
                 >
