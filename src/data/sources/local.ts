@@ -37,6 +37,7 @@ import type {
   QmpPackage,
   StoredFileRef,
   ImportLogEntry,
+  User,
 } from "@/domain/types";
 import type { FileScope } from "../dataSource";
 import { generateWorld, type SeedConfig } from "../seed/generate";
@@ -400,6 +401,12 @@ export function createLocalDataSource(): DataSource {
       await latency();
       maybeFail();
       await deltaLog.append({ id: `import:${entry.id}`, entity: "import", entityId: entry.id, payload: entry });
+    },
+
+    async persistEmployee(user: User): Promise<void> {
+      await latency();
+      maybeFail();
+      await commit("employee", user.id, user);
     },
 
     async flush(): Promise<number> {

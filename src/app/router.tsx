@@ -5,6 +5,8 @@ import { InboxPage } from "@/pages/InboxPage";
 import { MyWorkPage } from "@/pages/MyWorkPage";
 import { ImportLogPage } from "@/pages/ImportLogPage";
 import { ReportsPage } from "@/pages/ReportsPage";
+import { EmployeesPage } from "@/pages/admin/EmployeesPage";
+import { ContractSetupWizard } from "@/pages/ContractSetupWizard";
 import { ContractSummaryPage } from "@/pages/ContractSummaryPage";
 import { InventoryPage } from "@/pages/InventoryPage";
 import { SamplesPage } from "@/pages/SamplesPage";
@@ -32,6 +34,8 @@ export const router = createBrowserRouter([
       { path: "my-work", element: <MyWorkPage /> },
       { path: "import-log", element: <ImportLogPage /> },
       { path: "reports", element: <ReportsPage /> },
+      { path: "admin/employees", element: <EmployeesPage /> },
+      { path: "setup", element: <ContractSetupWizard /> },
       { path: "samples", element: <SamplesPage /> },
       { path: "samples/:sampleId", element: <SamplesPage /> },
       { path: "materials/definitions", element: <MaterialDefinitionPage /> },

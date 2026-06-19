@@ -182,6 +182,12 @@ interface State {
   qmpForContract(contractId: string): QmpPackage[];
   upsertQmpPackage(pkg: QmpPackage): void;
 
+  // Employee / security admin (M5)
+  upsertUser(user: User): void;
+
+  // Contract setup wizard (M6)
+  createContract(contract: Contract): void;
+
   // Ingestion (F4)
   importLogList: ImportLogEntry[];
   commitInventoryImport(items: InventoryItem[], meta: { source: string; fileName: string; created: number; updated: number; skipped: number; errors: string[] }): void;
@@ -281,7 +287,17 @@ export const useStore = create<State>((set, get) => ({
       const ds = await getDataSource();
       const { world, eoiDeltas, ledgerDeltas, eoiRowDeltas, payItemStatusDeltas, diaryDeltas, fileRefs } =
         await ds.loadWorld(DEFAULT_SEED_CONFIG);
-      const users = buildDemoUsers(world.contracts, world.items);
+      let users = buildDemoUsers(world.contracts, world.items);
+      // M5 — overlay employee admin edits (roles/scope/party) from the log.
+      const empOps = deltaLog.all().filter((o) => o.entity === "employee");
+      if (empOps.length) {
+        const byId = new Map(users.map((u) => [u.id, u]));
+        for (const op of empOps) {
+          const u = op.payload as User;
+          byId.set(u.id, u);
+        }
+        users = [...byId.values()];
+      }
       // P1 — derive the assignment lens: every inspector/RE is "assigned to" the
       // contracts in their explicit scope, layered onto any seeded assignment.
       const assignBy = new Map<string, Set<string>>();
@@ -803,6 +819,60 @@ export const useStore = create<State>((set, get) => ({
   },
 
   importLog: () => get().importLogList,
+
+  upsertUser(user) {
+    if (!canDo(get().currentUser, "manage_users")) {
+      get().pushToast("error", "Only a District Admin can manage employees.");
+      return;
+    }
+    const list = get().users;
+    const idx = list.findIndex((u) => u.id === user.id);
+    const prev = idx >= 0 ? list[idx] : null;
+    const next = idx >= 0 ? list.map((u) => (u.id === user.id ? user : u)) : [...list, user];
+    set({ users: next });
+    // if editing the current user, refresh their scope
+    if (user.id === get().currentUser?.id) {
+      set({ currentUser: user, visibleIds: visibleContractIds(user, get().contracts) });
+    }
+    void persist(
+      get,
+      set,
+      async (ds) => ds.persistEmployee(user),
+      () => {
+        const cur = get().users;
+        set({ users: prev ? cur.map((u) => (u.id === user.id ? prev : u)) : cur.filter((u) => u.id !== user.id) });
+      },
+      "Couldn't save employee",
+    );
+    get().pushToast("success", idx >= 0 ? `Updated ${user.name}` : `Added ${user.name}`);
+  },
+
+  createContract(contract) {
+    if (!canDo(get().currentUser, "author_contract")) {
+      get().pushToast("error", "Your role can't create contracts.");
+      return;
+    }
+    const me = get().currentUser?.id;
+    const withAssign: Contract = { ...contract, assignedInspectorIds: me ? [me] : [] };
+    const contracts = [...get().contracts, withAssign];
+    set({
+      contracts,
+      contractsById: new Map(contracts.map((c) => [c.id, c])),
+      payItemsByContract: new Map(get().payItemsByContract).set(withAssign.id, []),
+      visibleIds: new Set([...get().visibleIds, withAssign.id]),
+    });
+    void persist(
+      get,
+      set,
+      async (ds) => ds.persistContract(withAssign),
+      () => {
+        const rolled = get().contracts.filter((c) => c.id !== withAssign.id);
+        set({ contracts: rolled, contractsById: new Map(rolled.map((c) => [c.id, c])) });
+      },
+      "Couldn't create contract",
+    );
+    get().pushToast("success", `Created contract ${withAssign.number}`);
+  },
 
   qmpForContract: (contractId) => get().qmpPackagesList.filter((q) => q.contractId === contractId),
 

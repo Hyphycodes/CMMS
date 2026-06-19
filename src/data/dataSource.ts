@@ -30,6 +30,7 @@ import type {
   QmpPackage,
   StoredFileRef,
   ImportLogEntry,
+  User,
 } from "@/domain/types";
 import type { World, SeedConfig } from "./seed/generate";
 
@@ -144,6 +145,9 @@ export interface DataSource {
 
   // Ingestion (F4) — record an Import Log run (counts, who, when, errors).
   persistImportLog(entry: ImportLogEntry): Promise<void>;
+
+  // Employee / security admin (M5).
+  persistEmployee(user: User): Promise<void>;
 }
 
 let cached: DataSource | null = null;

@@ -25,6 +25,7 @@ const MENU_GROUPS: { heading: string; links: { to: string; label: string }[] }[]
     ],
   },
   { heading: "Reporting", links: [{ to: "/reports", label: "Reports" }, { to: "/import-log", label: "Import Log" }] },
+  { heading: "Maintenance", links: [{ to: "/admin/employees", label: "Employees" }, { to: "/setup", label: "New Contract" }] },
 ];
 
 function MegaMenu({ onClose }: { onClose: () => void }) {

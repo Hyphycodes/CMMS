@@ -39,6 +39,7 @@ import type {
   QmpPackage,
   StoredFileRef,
   ImportLogEntry,
+  User,
 } from "@/domain/types";
 import type { SeedConfig, World } from "../seed/generate";
 import { TEST_TEMPLATES } from "../seed/generate";
@@ -453,6 +454,17 @@ export function createSupabaseDataSource(): DataSource {
     async persistImportLog(entry: ImportLogEntry): Promise<void> {
       const { error } = await db.from("import_log").upsert(entry, { onConflict: "id" });
       if (error) throw error;
+    },
+
+    async persistEmployee(user: User): Promise<void> {
+      const { error } = await db.from("users").upsert(
+        { id: user.id, name: user.name, email: user.email ?? null, title: user.title ?? null, active: user.active ?? true, org_id: user.orgId, party: user.party },
+        { onConflict: "id" },
+      );
+      if (error) throw error;
+      // role rows are replaced wholesale
+      await db.from("user_roles").delete().eq("user_id", user.id);
+      if (user.roles.length) await db.from("user_roles").insert(user.roles.map((r) => ({ user_id: user.id, role: r })));
     },
   };
 }
