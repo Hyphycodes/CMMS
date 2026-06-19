@@ -29,6 +29,7 @@ import type {
   MaterialAllowanceLine,
   QmpPackage,
   StoredFileRef,
+  ImportLogEntry,
 } from "@/domain/types";
 import type { World, SeedConfig } from "./seed/generate";
 
@@ -140,6 +141,9 @@ export interface DataSource {
   deleteFile(ref: StoredFileRef): Promise<void>;
   /** Persist the reference list for a scope (the delta). */
   persistFileRefs(scopeKey: string, refs: StoredFileRef[]): Promise<void>;
+
+  // Ingestion (F4) — record an Import Log run (counts, who, when, errors).
+  persistImportLog(entry: ImportLogEntry): Promise<void>;
 }
 
 let cached: DataSource | null = null;

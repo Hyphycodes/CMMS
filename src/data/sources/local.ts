@@ -36,6 +36,7 @@ import type {
   MaterialAllowanceLine,
   QmpPackage,
   StoredFileRef,
+  ImportLogEntry,
 } from "@/domain/types";
 import type { FileScope } from "../dataSource";
 import { generateWorld, type SeedConfig } from "../seed/generate";
@@ -393,6 +394,12 @@ export function createLocalDataSource(): DataSource {
       // strip the ephemeral object-URL + uploading flag from the persisted ref
       const lean = refs.map((r) => ({ ...r, url: "", uploading: false }));
       await commit("fileRefs", scopeKey, lean);
+    },
+
+    async persistImportLog(entry: ImportLogEntry): Promise<void> {
+      await latency();
+      maybeFail();
+      await deltaLog.append({ id: `import:${entry.id}`, entity: "import", entityId: entry.id, payload: entry });
     },
 
     async flush(): Promise<number> {

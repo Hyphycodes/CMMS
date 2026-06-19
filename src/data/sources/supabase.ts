@@ -38,6 +38,7 @@ import type {
   MaterialAllowanceLine,
   QmpPackage,
   StoredFileRef,
+  ImportLogEntry,
 } from "@/domain/types";
 import type { SeedConfig, World } from "../seed/generate";
 import { TEST_TEMPLATES } from "../seed/generate";
@@ -446,6 +447,11 @@ export function createSupabaseDataSource(): DataSource {
 
     async persistQmpPackage(pkg: QmpPackage): Promise<void> {
       const { error } = await db.from("qmp_packages").upsert(pkg, { onConflict: "id" });
+      if (error) throw error;
+    },
+
+    async persistImportLog(entry: ImportLogEntry): Promise<void> {
+      const { error } = await db.from("import_log").upsert(entry, { onConflict: "id" });
       if (error) throw error;
     },
   };

@@ -3,6 +3,7 @@ import { AppLayout } from "./AppLayout";
 import { HomePage } from "@/pages/HomePage";
 import { InboxPage } from "@/pages/InboxPage";
 import { MyWorkPage } from "@/pages/MyWorkPage";
+import { ImportLogPage } from "@/pages/ImportLogPage";
 import { ContractSummaryPage } from "@/pages/ContractSummaryPage";
 import { InventoryPage } from "@/pages/InventoryPage";
 import { SamplesPage } from "@/pages/SamplesPage";
@@ -27,6 +28,7 @@ export const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: "inbox", element: <InboxPage /> },
       { path: "my-work", element: <MyWorkPage /> },
+      { path: "import-log", element: <ImportLogPage /> },
       { path: "samples", element: <SamplesPage /> },
       { path: "samples/:sampleId", element: <SamplesPage /> },
       { path: "materials/definitions", element: <MaterialDefinitionPage /> },

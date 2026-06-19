@@ -34,6 +34,7 @@ import type {
   ContractSummary,
   MaterialAllowanceLine,
   QmpPackage,
+  ImportLogEntry,
 } from "@/domain/types";
 import type { FileScope } from "@/data/dataSource";
 import { lineAmount, sumAmounts } from "@/domain/money";
@@ -180,6 +181,11 @@ interface State {
   qmpForContract(contractId: string): QmpPackage[];
   upsertQmpPackage(pkg: QmpPackage): void;
 
+  // Ingestion (F4)
+  importLogList: ImportLogEntry[];
+  commitInventoryImport(items: InventoryItem[], meta: { source: string; fileName: string; created: number; updated: number; skipped: number; errors: string[] }): void;
+  importLog(): ImportLogEntry[];
+
   // diary (brief 07)
   saveDiaryDay(day: DiaryDay): void;
   signDiaryDay(contractId: string, date: string): void;
@@ -238,6 +244,7 @@ export const useStore = create<State>((set, get) => ({
   mixDesignsList: [],
   materialAllowancesList: [],
   qmpPackagesList: [],
+  importLogList: [],
 
   samplesList: [],
   testsList: [],
@@ -331,6 +338,11 @@ export const useStore = create<State>((set, get) => ({
         mixDesignsList: world.mixDesigns,
         materialAllowancesList: world.materialAllowances,
         qmpPackagesList: world.qmpPackages,
+        importLogList: deltaLog
+          .all()
+          .filter((o) => o.entity === "import")
+          .map((o) => o.payload as ImportLogEntry)
+          .reverse(),
         samplesList: world.samples,
         testsList: world.tests,
         testTemplates: world.testTemplates,
@@ -758,6 +770,36 @@ export const useStore = create<State>((set, get) => ({
       "Couldn't save Material Allowance",
     );
   },
+
+  commitInventoryImport(items, meta) {
+    if (!canDo(get().currentUser, "create_inventory")) {
+      get().pushToast("error", "Your role can't import inventory.");
+      return;
+    }
+    for (const item of items) get().upsertInventoryItem(item);
+    const entry: ImportLogEntry = {
+      id: `imp_${Date.now()}`,
+      source: meta.source,
+      fileName: meta.fileName,
+      at: new Date().toISOString(),
+      by: get().currentUser?.name ?? "",
+      created: meta.created,
+      updated: meta.updated,
+      skipped: meta.skipped,
+      errors: meta.errors,
+    };
+    set({ importLogList: [entry, ...get().importLogList] });
+    void persist(
+      get,
+      set,
+      async (ds) => ds.persistImportLog(entry),
+      () => set({ importLogList: get().importLogList.filter((e) => e.id !== entry.id) }),
+      "Couldn't record the import",
+    );
+    get().pushToast("success", `Imported ${meta.created + meta.updated} rows (${meta.created} new, ${meta.updated} updated)`);
+  },
+
+  importLog: () => get().importLogList,
 
   qmpForContract: (contractId) => get().qmpPackagesList.filter((q) => q.contractId === contractId),
 
