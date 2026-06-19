@@ -9,6 +9,7 @@ import { FieldGroup } from "@/components/ui/FieldGroup";
 import { FileDrop } from "@/components/ui/FileDrop";
 import { DataGrid } from "@/components/ui/DataGrid";
 import { TabBar } from "@/components/ui/TabBar";
+import { CloseoutScoreChip, CloseoutChecklist } from "@/components/CloseoutScore";
 import { EditText, EditNumber, EditDate } from "@/components/ui/EditableRowTable";
 import { IntelligentSearch } from "@/components/ui/IntelligentSearch";
 import { CONTRACTORS, DESIGNER_FIRMS } from "@/data/reference";
@@ -161,9 +162,10 @@ export function ContractSummaryPage() {
         <div>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
-              <div className="flex items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <span className="font-mono text-xl font-bold text-ink">{contract.number}</span>
                 <Pill tone={STATUS_TONE[s.contractStatus] ?? "slate"}>{s.contractStatus}</Pill>
+                <CloseoutScoreChip contract={contract} />
               </div>
               <h1 className="mt-0.5 text-lg text-ink">{contract.name}</h1>
               <p className="text-sm text-ink-soft">{s.jobDescription}</p>
@@ -500,6 +502,9 @@ function FinalReviewTab({ contract }: { contract: Contract }) {
   return (
     <div className="space-y-4">
       <p className="text-xs text-ink-faint">Close-out tracker — the RE/inspector's working closeout form. Every field edits and persists.</p>
+
+      <CloseoutChecklist contract={contract} />
+
 
       <ESection title="Final from District">
         <EDate label="Deadline for Final FRC Bills" value={d.deadlineForFinalFrcBills} disabled={!canEdit} onChange={(v) => patchD({ deadlineForFinalFrcBills: v })} />
