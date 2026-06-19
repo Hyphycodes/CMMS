@@ -61,6 +61,10 @@ export function buildDemoUsers(contracts: Contract[], items: InventoryItem[]): U
     roles: ["Inspector"],
     districtIds: [],
     contractIds: realContractIds,
+    orgId: "IDOT",
+    party: "IDOT",
+    active: true,
+    title: "Inspector",
   }));
 
   return [
@@ -71,6 +75,11 @@ export function buildDemoUsers(contracts: Contract[], items: InventoryItem[]): U
       roles: ["Inspector"],
       districtIds: [],
       contractIds: realContractIds,
+      orgId: "IDOT",
+      party: "IDOT",
+      active: true,
+      title: "Inspector",
+      email: "gerardo.sanchez@idot.illinois.gov",
     },
     ...otherInspectorUsers,
     {
@@ -79,6 +88,10 @@ export function buildDemoUsers(contracts: Contract[], items: InventoryItem[]): U
       roles: ["DistrictAdmin"],
       districtIds: allDistricts,
       contractIds: [],
+      orgId: "IDOT",
+      party: "IDOT",
+      active: true,
+      title: "District Administrator",
     },
     {
       id: "u_doc",
@@ -86,6 +99,10 @@ export function buildDemoUsers(contracts: Contract[], items: InventoryItem[]): U
       roles: ["Documentation"],
       districtIds: topDistricts,
       contractIds: [],
+      orgId: "IDOT",
+      party: "IDOT",
+      active: true,
+      title: "Materials Reviewer",
     },
     {
       id: "u_inspector",
@@ -93,6 +110,10 @@ export function buildDemoUsers(contracts: Contract[], items: InventoryItem[]): U
       roles: ["Inspector"],
       districtIds: [],
       contractIds: inspectorContracts,
+      orgId: "IDOT",
+      party: "IDOT",
+      active: true,
+      title: "Inspector",
     },
     {
       id: "u_re",
@@ -100,6 +121,10 @@ export function buildDemoUsers(contracts: Contract[], items: InventoryItem[]): U
       roles: ["ResidentEngineer"],
       districtIds: [],
       contractIds: reContracts,
+      orgId: "IDOT",
+      party: "IDOT",
+      active: true,
+      title: "Resident Engineer",
     },
     {
       id: "u_contractor",
@@ -107,6 +132,10 @@ export function buildDemoUsers(contracts: Contract[], items: InventoryItem[]): U
       roles: ["Contractor"],
       districtIds: [],
       contractIds: contractorContracts,
+      orgId: "Prairie State Construction",
+      party: "Contractor",
+      active: true,
+      title: "Prime Contractor",
     },
   ];
 }

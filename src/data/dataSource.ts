@@ -23,6 +23,11 @@ import type {
   PayItem,
   PayEstimate,
   Authorization,
+  Contract,
+  ContractSummary,
+  FinalReview,
+  MaterialAllowanceLine,
+  QmpPackage,
 } from "@/domain/types";
 import type { World, SeedConfig } from "./seed/generate";
 
@@ -68,9 +73,12 @@ export interface DataSource {
   readonly name: string;
   /** Load the full world (seed + any persisted deltas already applied). */
   loadWorld(config: SeedConfig): Promise<LoadResult>;
+  /** Drain queued (offline) ops to the backend; returns the number flushed (F1). */
+  flush(): Promise<number>;
   /** Persist a batch of inventory status changes (deltas only). */
   persistInventoryStatus(updates: InventoryStatusUpdate[]): Promise<void>;
   persistInventoryNote(id: string, note: string): Promise<void>;
+  persistInventoryActive(id: string, active: boolean): Promise<void>;
   persistEoiApproval(
     itemId: string,
     eoiId: string,
@@ -107,6 +115,16 @@ export interface DataSource {
 
   // Authorizations (brief 10).
   persistAuthorization(authorization: Authorization): Promise<void>;
+
+  // Contract sub-tabs (briefs 18/19) — Summary working fields + Final Review.
+  persistContractSummary(contractId: string, patch: Partial<ContractSummary>): Promise<void>;
+  persistFinalReview(contractId: string, finalReview: FinalReview): Promise<void>;
+  /** Whole-contract upsert (contract setup wizard, M6). */
+  persistContract(contract: Contract): Promise<void>;
+
+  // Missing modules (M1/M2).
+  persistMaterialAllowance(contractId: string, lines: MaterialAllowanceLine[]): Promise<void>;
+  persistQmpPackage(pkg: QmpPackage): Promise<void>;
 }
 
 let cached: DataSource | null = null;

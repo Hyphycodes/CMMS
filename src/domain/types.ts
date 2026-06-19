@@ -23,12 +23,42 @@ export const ROLES: Role[] = [
   "DistrictAdmin",
 ];
 
+/**
+ * Party dimension (F2). Stamped on every mutable record so external
+ * contractors / producers / labs can be invited in later WITHOUT re-stamping
+ * the whole dataset. Everyone is "IDOT" for now.
+ */
+export type Party = "IDOT" | "Contractor" | "Producer" | "Supplier" | "Lab";
+export const PARTIES: Party[] = ["IDOT", "Contractor", "Producer", "Supplier", "Lab"];
+
 export interface User {
   id: string;
   name: string;
   roles: Role[];
   districtIds: number[]; // access to all contracts in these districts
   contractIds: string[]; // explicit per-contract access
+  /** F2 — the org/party this user acts on behalf of. */
+  orgId: string;
+  party: Party;
+  /** Appendix A admin fields (M5). */
+  email?: string;
+  title?: string;
+  active?: boolean;
+}
+
+/**
+ * Provenance (F2) — who/which org/when touched a record, plus a version for the
+ * stale-write guard (P6). Stamped automatically through the store's `stamp`
+ * helper; actions never hand-set these. Optional so seeds can backfill lazily.
+ */
+export interface Provenance {
+  createdBy?: string;
+  createdByOrg?: string;
+  createdAt?: string;
+  updatedBy?: string;
+  updatedByOrg?: string;
+  updatedAt?: string;
+  version?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -158,7 +188,7 @@ export interface AuthApproval {
   approvedAt: string | null;
 }
 
-export interface Authorization {
+export interface Authorization extends Provenance {
   id: string;
   contractId: string;
   number: number;
@@ -185,7 +215,7 @@ export interface PayEstimateLine {
   amount: number;
 }
 
-export interface PayEstimate {
+export interface PayEstimate extends Provenance {
   id: string;
   contractId: string;
   number: number;
@@ -200,7 +230,7 @@ export interface PayEstimate {
 }
 
 /** Quantity Book placement entry (Ch. 4) — brief 08. */
-export interface PlacementEntry {
+export interface PlacementEntry extends Provenance {
   id: string;
   payItemNumber: string;
   contractId: string;
@@ -221,7 +251,7 @@ export interface PlacementEntry {
 // ---------------------------------------------------------------------------
 
 /** Top-level inventory row as shown in the Contract Inventory Summary grid (Ch. 8). */
-export interface InventoryItem {
+export interface InventoryItem extends Provenance {
   id: string; // internal id
   inventoryId: string; // displayed "Inventory ID"
   contractId: string;
@@ -242,6 +272,8 @@ export interface InventoryItem {
   locationType?: string;
   effectiveDate?: string | null;
   expirationDate?: string | null;
+  /** Active/Inactive (legacy Inventory Details, brief 16). Undefined ⇒ active. */
+  active?: boolean;
 }
 
 /** Full inventory detail — the four tabs. Generated on demand from the item seed. */
@@ -252,7 +284,7 @@ export interface InventoryDetail extends InventoryItem {
 }
 
 /** Quantity Ledger row (Ch. 8 "Quantity Ledger Tab"). */
-export interface LedgerEntry {
+export interface LedgerEntry extends Provenance {
   id: number; // "Id" column — referenced by EOI rows
   date: string; // ISO date
   payItemNumber: string;
@@ -266,7 +298,7 @@ export interface LedgerEntry {
 }
 
 /** Evidence of Inspection row (Ch. 8 "Evidence of Inspection Tab", Ch. 14). */
-export interface EOIEntry {
+export interface EOIEntry extends Provenance {
   id: string;
   ledgerIds: number[]; // references LedgerEntry.id (may be multiple)
   actualEoi: string[]; // TICK / TEST / DPR / LA-15 / LIST / CERT / MARK
@@ -442,7 +474,7 @@ export interface DbeCloseOut {
   eeoRepresentative: string;
 }
 
-export interface FinalReview {
+export interface FinalReview extends Provenance {
   finalFromDistrict: FinalFromDistrict;
   documentationReview: DocumentationReview;
   materialsReview: MaterialsReview;
@@ -549,7 +581,7 @@ export const SAMPLE_STATUSES: SampleStatus[] = [
   "Rejected",
 ];
 
-export interface Sample {
+export interface Sample extends Provenance {
   id: string;
   sampleIdentifier: string; // generated on save
   testId: string; // generated on save
@@ -596,7 +628,7 @@ export interface TestField {
   pass?: boolean;
 }
 
-export interface Test {
+export interface Test extends Provenance {
   id: string;
   sampleId: string;
   series: number; // 1..n
@@ -631,7 +663,7 @@ export interface DiaryContractorWork {
   summary: string;
 }
 
-export interface DiaryDay {
+export interface DiaryDay extends Provenance {
   contractId: string;
   date: string; // ISO, one per day
   weather: DiaryWeather;
@@ -647,4 +679,66 @@ export interface DiarySuspension {
   from: string;
   to: string | null;
   reason: string;
+}
+
+// ---------------------------------------------------------------------------
+// Material Allowance (Ch. 5) — M1
+// ---------------------------------------------------------------------------
+
+/**
+ * A Material Allowance line (manual Ch. 5) — pre-payment for stockpiled material
+ * that flows into Pay Estimates. One row per material on a contract.
+ */
+export interface MaterialAllowanceLine extends Provenance {
+  id: string;
+  contractId: string;
+  materialCode: string;
+  materialName: string;
+  payItemNumber: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  /** quantity × unitPrice, rounded to cents */
+  allowanceAmount: number;
+  invoiceNumber: string;
+  receivedDate: string | null;
+  note: string;
+}
+
+// ---------------------------------------------------------------------------
+// QMP package (Ch. 10) — M2 (HMA/PCC quality-management package)
+// ---------------------------------------------------------------------------
+
+export type QmpStatus = "Draft" | "Assembled" | "Submitted" | "Accepted" | "Rejected";
+export const QMP_STATUSES: QmpStatus[] = ["Draft", "Assembled", "Submitted", "Accepted", "Rejected"];
+
+export interface QmpPackage extends Provenance {
+  id: string;
+  contractId: string | null;
+  sampleId: string;
+  materialCode: string;
+  materialName: string;
+  family: MaterialFamily;
+  status: QmpStatus;
+  /** test ids (Sample drawer Tests) assembled into the package */
+  testIds: string[];
+  /** required test-series checklist for the family */
+  requiredSeries: { label: string; satisfied: boolean }[];
+  note: string;
+}
+
+// ---------------------------------------------------------------------------
+// Import Log (F4) — every ingestion run, surfaced from the delta log
+// ---------------------------------------------------------------------------
+
+export interface ImportLogEntry {
+  id: string;
+  source: string; // "csv" | "wctb" | "eplan"
+  fileName: string;
+  at: string;
+  by: string;
+  created: number;
+  updated: number;
+  skipped: number;
+  errors: string[];
 }

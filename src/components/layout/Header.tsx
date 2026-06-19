@@ -10,6 +10,8 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   const { contractId } = useParams();
   const contract = useStore((s) => (contractId ? s.contract(contractId) : undefined));
   const saving = useStore((s) => s.savingCount > 0);
+  const online = useStore((s) => s.online);
+  const pending = useStore((s) => s.pendingChanges);
   const dataSourceName = useStore((s) => s.dataSourceName);
   const users = useStore((s) => s.users);
   const currentUser = useStore((s) => s.currentUser);
@@ -61,6 +63,22 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
         {saving && (
           <span className="flex items-center gap-1.5 text-xs text-ink-soft">
             <Spinner className="text-sm" /> Saving…
+          </span>
+        )}
+        {(!online || pending > 0) && (
+          <span
+            className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+              !online ? "bg-amber-50 text-amber-700" : "bg-canvas text-ink-soft"
+            }`}
+            title={
+              online
+                ? `${pending} change${pending === 1 ? "" : "s"} queued — flushing to the backend`
+                : "Offline — changes are queued locally and will sync on reconnect"
+            }
+            aria-live="polite"
+          >
+            <span className={`inline-block h-1.5 w-1.5 rounded-full ${online ? "bg-emerald-500" : "bg-amber-500"}`} />
+            {online ? `${pending} pending` : `Offline · ${pending} pending`}
           </span>
         )}
         {dataSourceName === "local" && currentUser && (

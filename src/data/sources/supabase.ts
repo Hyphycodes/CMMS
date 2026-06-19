@@ -33,6 +33,9 @@ import type {
   Authorization,
   MixDesign,
   MaterialFamily,
+  FinalReview,
+  MaterialAllowanceLine,
+  QmpPackage,
 } from "@/domain/types";
 import type { SeedConfig, World } from "../seed/generate";
 import { TEST_TEMPLATES } from "../seed/generate";
@@ -54,6 +57,11 @@ export function createSupabaseDataSource(): DataSource {
 
   return {
     name: "supabase",
+
+    async flush(): Promise<number> {
+      // Supabase writes are synchronous in each persist call; nothing is queued.
+      return 0;
+    },
 
     async loadWorld(_config: SeedConfig): Promise<LoadResult> {
       // RLS returns only the authenticated user's scoped rows (brief 02/12).
@@ -141,6 +149,8 @@ export function createSupabaseDataSource(): DataSource {
         payEstimates: (estimatesRes.data ?? []).map(rowToPayEstimate),
         authorizations: (authsRes.data ?? []).map(rowToAuthorization),
         mixDesigns: (mixRes.data ?? []).map(rowToMixDesign),
+        materialAllowances: [],
+        qmpPackages: [],
       };
       return {
         world,
@@ -168,6 +178,11 @@ export function createSupabaseDataSource(): DataSource {
 
     async persistInventoryNote(id: string, note: string): Promise<void> {
       const { error } = await db.from("inventory_items").update({ note }).eq("id", id);
+      if (error) throw error;
+    },
+
+    async persistInventoryActive(id: string, active: boolean): Promise<void> {
+      const { error } = await db.from("inventory_items").update({ active }).eq("id", id);
       if (error) throw error;
     },
 
@@ -347,6 +362,54 @@ export function createSupabaseDataSource(): DataSource {
         },
         { onConflict: "id" },
       );
+      if (error) throw error;
+    },
+
+    async persistContractSummary(contractId: string, patch: Partial<ContractSummary>): Promise<void> {
+      // Read-modify-write the jsonb summary column.
+      const { data, error: readErr } = await db.from("contracts").select("summary").eq("id", contractId).single();
+      if (readErr) throw readErr;
+      const summary = { ...((data?.summary as ContractSummary) ?? {}), ...patch };
+      const { error } = await db.from("contracts").update({ summary }).eq("id", contractId);
+      if (error) throw error;
+    },
+
+    async persistFinalReview(contractId: string, finalReview: FinalReview): Promise<void> {
+      const { error } = await db.from("contracts").update({ final_review: finalReview }).eq("id", contractId);
+      if (error) throw error;
+    },
+
+    async persistContract(contract: Contract): Promise<void> {
+      const { error } = await db.from("contracts").upsert(
+        {
+          id: contract.id,
+          number: contract.number,
+          name: contract.name,
+          county: contract.county,
+          district: contract.district,
+          work_type: contract.workType,
+          summary: contract.summary,
+          insurance: contract.insurance,
+          subcontractors: contract.subcontractors,
+          project_documents: contract.projectDocuments,
+          final_review: contract.finalReview,
+        },
+        { onConflict: "id" },
+      );
+      if (error) throw error;
+    },
+
+    async persistMaterialAllowance(contractId: string, lines: MaterialAllowanceLine[]): Promise<void> {
+      const del = await db.from("material_allowances").delete().eq("contract_id", contractId);
+      if (del.error) throw del.error;
+      if (lines.length) {
+        const { error } = await db.from("material_allowances").insert(lines.map((l) => ({ ...l, contract_id: contractId })));
+        if (error) throw error;
+      }
+    },
+
+    async persistQmpPackage(pkg: QmpPackage): Promise<void> {
+      const { error } = await db.from("qmp_packages").upsert(pkg, { onConflict: "id" });
       if (error) throw error;
     },
   };

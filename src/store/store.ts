@@ -28,6 +28,7 @@ import type {
   PayEstimate,
   Authorization,
   MixDesign,
+  Provenance,
 } from "@/domain/types";
 import { lineAmount, sumAmounts } from "@/domain/money";
 import { getDataSource } from "@/data/dataSource";
@@ -35,6 +36,8 @@ import { DEFAULT_SEED_CONFIG, buildOverlaidDetail, buildDiaryDay } from "@/data/
 import type { EoiDelta, PayItemMaterialStatusDelta } from "@/data/dataSource";
 import { buildDemoUsers, DEFAULT_USER_ID } from "@/auth/demoUsers";
 import { can as canDo, visibleContractIds, type Capability } from "@/auth/permissions";
+import * as deltaLog from "@/data/deltaLog";
+import { stamp as stampProvenance, stamperFromUser } from "@/domain/provenance";
 
 const USER_KEY = "proof:user:v1";
 
@@ -99,6 +102,11 @@ interface State {
 
   savingCount: number;
   toasts: Toast[];
+
+  // F1 — offline-first: online state + queued (un-synced) op count.
+  online: boolean;
+  pendingChanges: number;
+  flushPending(): Promise<void>;
 
   load(): Promise<void>;
 
@@ -207,6 +215,19 @@ export const useStore = create<State>((set, get) => ({
   savingCount: 0,
   toasts: [],
 
+  online: typeof navigator === "undefined" ? true : navigator.onLine,
+  pendingChanges: 0,
+
+  async flushPending() {
+    try {
+      const ds = await getDataSource();
+      await ds.flush();
+    } catch {
+      /* stay queued */
+    }
+    set({ pendingChanges: deltaLog.unsyncedCount() });
+  },
+
   async load() {
     if (get().status === "loading" || get().status === "ready") return;
     set({ status: "loading" });
@@ -223,8 +244,19 @@ export const useStore = create<State>((set, get) => ({
         }
       })();
       const currentUser = users.find((u) => u.id === savedId) ?? users.find((u) => u.id === DEFAULT_USER_ID) ?? users[0];
+      if (currentUser) deltaLog.setActor({ userId: currentUser.id, orgId: currentUser.orgId });
+      // F1 — keep the pending-changes pill live; flush automatically on reconnect.
+      deltaLog.subscribe(() => set({ pendingChanges: deltaLog.unsyncedCount() }));
+      if (typeof window !== "undefined") {
+        window.addEventListener("online", () => {
+          set({ online: true });
+          void get().flushPending();
+        });
+        window.addEventListener("offline", () => set({ online: false }));
+      }
       set({
         status: "ready",
+        pendingChanges: deltaLog.unsyncedCount(),
         dataSourceName: ds.name,
         contracts: world.contracts,
         contractsById: new Map(world.contracts.map((c) => [c.id, c])),
@@ -260,6 +292,7 @@ export const useStore = create<State>((set, get) => ({
     } catch {
       /* non-fatal */
     }
+    deltaLog.setActor({ userId: user.id, orgId: user.orgId });
     set({ currentUser: user, visibleIds: visibleContractIds(user, get().contracts) });
   },
 
@@ -409,6 +442,7 @@ export const useStore = create<State>((set, get) => ({
     const list = get().items;
     const idx = list.findIndex((i) => i.id === item.id);
     const prev = idx >= 0 ? list[idx] : null;
+    item = stamped(get, item, idx < 0);
     set({ items: idx >= 0 ? list.map((i) => (i.id === item.id ? item : i)) : [...list, item] });
     recomputeContractCounts(get, set, item.contractId);
     void persist(
@@ -442,6 +476,7 @@ export const useStore = create<State>((set, get) => ({
       return;
     }
     const prev = get().ledgerDeltas[itemId];
+    rows = rows.map((r) => stamped(get, r, !r.createdAt));
     set({ ledgerDeltas: { ...get().ledgerDeltas, [itemId]: rows } });
     void persist(
       get,
@@ -463,6 +498,7 @@ export const useStore = create<State>((set, get) => ({
       return;
     }
     const prev = get().eoiRowDeltas[itemId];
+    rows = rows.map((r) => stamped(get, r, !r.createdAt));
     set({ eoiRowDeltas: { ...get().eoiRowDeltas, [itemId]: rows } });
     void persist(
       get,
@@ -525,6 +561,7 @@ export const useStore = create<State>((set, get) => ({
     }
     const key = `${day.contractId}:${day.date}`;
     const prev = get().diaryDeltas[key];
+    day = stamped(get, day, !prev);
     set({ diaryDeltas: { ...get().diaryDeltas, [key]: day } });
     void persist(
       get,
@@ -586,6 +623,7 @@ export const useStore = create<State>((set, get) => ({
     const list = get().placementsList;
     const idx = list.findIndex((p) => p.id === placement.id);
     const prev = idx >= 0 ? list[idx] : null;
+    placement = stamped(get, placement, idx < 0);
     set({ placementsList: idx >= 0 ? list.map((p) => (p.id === placement.id ? placement : p)) : [...list, placement] });
     void persist(
       get,
@@ -683,7 +721,7 @@ export const useStore = create<State>((set, get) => ({
     });
     const thisTotal = sumAmounts(lines.map((l) => l.amount));
     const priorToDate = existing.reduce((s, e) => s + e.thisEstimateTotal, 0);
-    const estimate: PayEstimate = {
+    const estimateBase: PayEstimate = {
       id,
       contractId,
       number,
@@ -696,6 +734,7 @@ export const useStore = create<State>((set, get) => ({
       thisEstimateTotal: thisTotal,
       toDateTotal: Math.round((priorToDate + thisTotal) * 100) / 100,
     };
+    const estimate = stamped(get, estimateBase, true);
     set({ payEstimatesList: [...get().payEstimatesList, estimate] });
     // mark consumed placements (optimistic) so they can't be double-counted
     const consumed = new Set(eligible.map((p) => p.id));
@@ -908,6 +947,14 @@ function appendNote(existing: string, addition: string): string {
   return existing ? `${existing}\n${addition}` : addition;
 }
 
+/**
+ * F2 — stamp provenance from the current user. The single path every write goes
+ * through; actions never hand-set createdBy/updatedBy/version.
+ */
+function stamped<T extends Provenance>(get: () => State, entity: T, isNew?: boolean): T {
+  return stampProvenance(entity, stamperFromUser(get().currentUser), { isNew });
+}
+
 function saveSample(
   get: () => State,
   set: (p: Partial<State>) => void,
@@ -917,6 +964,7 @@ function saveSample(
   const list = get().samplesList;
   const idx = list.findIndex((s) => s.id === sample.id);
   const prev = idx >= 0 ? list[idx] : null;
+  sample = stamped(get, sample, idx < 0);
   set({ samplesList: idx >= 0 ? list.map((s) => (s.id === sample.id ? sample : s)) : [...list, sample] });
   void persist(
     get,
@@ -935,6 +983,7 @@ function saveSample(
 function saveAuth(get: () => State, set: (p: Partial<State>) => void, auth: Authorization) {
   const list = get().authorizationsList;
   const prev = list.find((a) => a.id === auth.id) ?? null;
+  auth = stamped(get, auth, !prev);
   set({ authorizationsList: list.map((a) => (a.id === auth.id ? auth : a)) });
   void persist(
     get,
@@ -951,6 +1000,7 @@ function saveTest(get: () => State, set: (p: Partial<State>) => void, test: Test
   const list = get().testsList;
   const idx = list.findIndex((t) => t.id === test.id);
   const prev = idx >= 0 ? list[idx] : null;
+  test = stamped(get, test, idx < 0);
   set({ testsList: idx >= 0 ? list.map((t) => (t.id === test.id ? test : t)) : [...list, test] });
   void persist(
     get,

@@ -45,6 +45,8 @@ import type {
   AuthType,
   AuthApproval,
   MixDesign,
+  MaterialAllowanceLine,
+  QmpPackage,
 } from "@/domain/types";
 import { makeRng, type Rng } from "./rng";
 import { buildPayItemMaterials } from "@/domain/grouping";
@@ -95,6 +97,8 @@ export interface World {
   payEstimates: PayEstimate[];
   authorizations: Authorization[];
   mixDesigns: MixDesign[];
+  materialAllowances: MaterialAllowanceLine[];
+  qmpPackages: QmpPackage[];
 }
 
 /** Mix designs for HMA/PCC families (Ch. 9) — brief 11. */
@@ -775,6 +779,12 @@ export function generateWorld(config: SeedConfig = DEFAULT_SEED_CONFIG): World {
   const payEstimates = generatePayEstimates(contracts, payItemsByContract, placements);
   const authorizations = generateAuthorizations(contracts, payItemsByContract);
 
+  // F2 — backfill provenance deterministically from existing attribution so
+  // "Created by me" / "Assigned by me" (P2) and the audit trail have data on
+  // day one. Samples carry their inspector; placements their creator; the
+  // freshly-migrated 61D34 inventory is attributed to the primary inspector.
+  backfillProvenance(items, samples, placements, authorizations);
+
   return {
     contracts,
     items,
@@ -787,7 +797,97 @@ export function generateWorld(config: SeedConfig = DEFAULT_SEED_CONFIG): World {
     payEstimates,
     authorizations,
     mixDesigns: generateMixDesigns(),
+    materialAllowances: generateMaterialAllowances(contracts, payItemsByContract),
+    qmpPackages: [] as QmpPackage[],
   };
+}
+
+/**
+ * Seed a couple of Material Allowance lines (Ch. 5) on the real, fully-migrated
+ * contracts so the surface has live data on day one. M1.
+ */
+function generateMaterialAllowances(
+  contracts: Contract[],
+  payItemsByContract: Map<string, PayItem[]>,
+): MaterialAllowanceLine[] {
+  const out: MaterialAllowanceLine[] = [];
+  const targets = contracts.filter((c) => c.id === CONTRACT_61D34.id);
+  for (const c of targets) {
+    const rng = makeRng(`${MASTER_SEED}:matallow:${c.id}`);
+    const payItems = (payItemsByContract.get(c.id) ?? []).slice(0, 40);
+    const picks = rng.sample(payItems, Math.min(3, payItems.length));
+    picks.forEach((pi, i) => {
+      const material = MATERIALS.find((m) => PAY_ITEM_TEMPLATES.find((t) => t.code === pi.number)?.family === m.family) ?? MATERIALS[0];
+      const quantity = rng.float(50, 800, 0);
+      const unitPrice = material.code ? rng.float(20, 140, 2) : 0;
+      out.push({
+        id: `ma_${c.id}_${i + 1}`,
+        contractId: c.id,
+        materialCode: material.code,
+        materialName: material.name,
+        payItemNumber: pi.number,
+        quantity,
+        unit: material.unit,
+        unitPrice,
+        allowanceAmount: Math.round(quantity * unitPrice * 100) / 100,
+        invoiceNumber: `INV-${rng.int(10000, 99999)}`,
+        receivedDate: null,
+        note: "",
+        createdBy: "Gerardo Sanchez II",
+        createdByOrg: "IDOT",
+        createdAt: "2026-01-15",
+        version: 1,
+      });
+    });
+  }
+  return out;
+}
+
+/** F2 — deterministic provenance backfill over seeded data. */
+function backfillProvenance(
+  items: InventoryItem[],
+  samples: Sample[],
+  placements: PlacementEntry[],
+  authorizations: Authorization[],
+): void {
+  const REVIEWERS = ["Gerardo Sanchez II", "Breanna Heffren", "Jared Davison", "John Reeves"];
+  for (const s of samples) {
+    s.createdBy = s.inspector || REVIEWERS[0];
+    s.createdByOrg = "IDOT";
+    s.createdAt = s.sampleDate;
+    s.updatedBy = s.approverName || s.inspector || REVIEWERS[0];
+    s.updatedByOrg = "IDOT";
+    s.updatedAt = s.approvedDate ?? s.completedDate ?? s.sampleDate;
+    s.version = 1;
+  }
+  for (const p of placements) {
+    p.createdBy = p.creator;
+    p.createdByOrg = "IDOT";
+    p.createdAt = p.date;
+    p.updatedBy = p.creator;
+    p.updatedByOrg = "IDOT";
+    p.updatedAt = p.date;
+    p.version = 1;
+  }
+  for (const it of items) {
+    if (it.createdBy) continue;
+    const rng = makeRng(`prov:${it.id}`);
+    const who = it.contractId === CONTRACT_61D34.id ? "Gerardo Sanchez II" : rng.pick(REVIEWERS);
+    it.createdBy = who;
+    it.createdByOrg = "IDOT";
+    it.updatedBy = who;
+    it.updatedByOrg = "IDOT";
+    it.version = 1;
+  }
+  for (const a of authorizations) {
+    a.createdBy = "A. Calloway";
+    a.createdByOrg = "IDOT";
+    a.createdAt = a.createdDate;
+    a.updatedBy = a.approvals.find((x) => x.approver)?.approver ?? "A. Calloway";
+    a.updatedByOrg = "IDOT";
+    a.updatedAt = a.createdDate;
+    a.version = 1;
+  }
 }
 
 /** A few authorizations per contract (Ch. 7) — brief 10. */
