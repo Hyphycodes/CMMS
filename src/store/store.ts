@@ -45,6 +45,7 @@ import { buildDemoUsers, DEFAULT_USER_ID } from "@/auth/demoUsers";
 import { can as canDo, visibleContractIds, type Capability } from "@/auth/permissions";
 import * as deltaLog from "@/data/deltaLog";
 import { stamp as stampProvenance, stamperFromUser } from "@/domain/provenance";
+import { canFinalOut, finalOutGate, unmet } from "@/domain/rules";
 
 const USER_KEY = "proof:user:v1";
 
@@ -200,6 +201,8 @@ interface State {
   // pay estimate (brief 09)
   createPayEstimate(contractId: string, periodStart: string, periodEnd: string): string | undefined;
   submitPayEstimate(id: string): void;
+  /** M3 — process the latest estimate to a Final Pay Estimate (Appendix H). */
+  processFinalOut(contractId: string): void;
 
   // authorizations (brief 10)
   saveAuthorization(authorization: Authorization): void;
@@ -1048,6 +1051,46 @@ export const useStore = create<State>((set, get) => ({
       "Couldn't submit pay estimate",
     );
     get().pushToast("success", `Submitted Estimate #${est.number}`);
+  },
+
+  processFinalOut(contractId) {
+    if (!canDo(get().currentUser, "submit_pay_estimate")) {
+      get().pushToast("error", "Your role can't final out the contract.");
+      return;
+    }
+    const contract = get().contract(contractId);
+    if (!contract) return;
+    const ctx = {
+      items: get().items.filter((i) => i.contractId === contractId),
+      payItems: get().payItemsByContract.get(contractId) ?? [],
+      authorizations: get().authorizationsList.filter((a) => a.contractId === contractId),
+    };
+    if (!canFinalOut(contract, ctx)) {
+      const first = unmet(finalOutGate(contract, ctx))[0];
+      get().pushToast("error", `Not ready to final out — ${first?.message ?? "open items remain"}.`);
+      return;
+    }
+    const estimates = get().payEstimatesForContract(contractId);
+    const last = estimates[estimates.length - 1];
+    if (!last) {
+      get().pushToast("error", "Create at least one pay estimate before finaling out.");
+      return;
+    }
+    const finalEst: PayEstimate = stamped(get, { ...last, isFinal: true, status: "Approved" }, false);
+    set({ payEstimatesList: get().payEstimatesList.map((e) => (e.id === last.id ? finalEst : e)) });
+    void persist(
+      get,
+      set,
+      async (ds) => ds.persistPayEstimate(finalEst),
+      () => set({ payEstimatesList: get().payEstimatesList.map((e) => (e.id === last.id ? last : e)) }),
+      "Couldn't final out the estimate",
+    );
+    // Link to Final Review — mark all pay items final on the closeout tracker.
+    get().setFinalReview(contractId, {
+      ...contract.finalReview,
+      finalFromDistrict: { ...contract.finalReview.finalFromDistrict, allPayItemsFinal: true },
+    });
+    get().pushToast("success", `Estimate #${last.number} processed as the Final Pay Estimate`);
   },
 
   saveAuthorization(authorization) {

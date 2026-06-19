@@ -124,6 +124,19 @@ export function closeoutRules(contract: Contract, ctx: CloseoutContext): RuleRes
   return results;
 }
 
+/**
+ * M3 — the operational "ready to final out" gate: the inventory / pay-item /
+ * authorization blockers that must pass before a contract can be finaled out.
+ * (The Final-Review fields are what final-out then sets, so they're excluded.)
+ */
+const FINAL_OUT_RULES = new Set(["closeout.inventory-reviewed", "closeout.pay-items-final", "closeout.authorizations-closed"]);
+export function finalOutGate(contract: Contract, ctx: CloseoutContext): RuleResult[] {
+  return closeoutRules(contract, ctx).filter((r) => FINAL_OUT_RULES.has(r.id));
+}
+export function canFinalOut(contract: Contract, ctx: CloseoutContext): boolean {
+  return finalOutGate(contract, ctx).every((r) => r.ok);
+}
+
 /** Score = share of satisfied non-info rules (0–100). */
 export function closeoutScore(results: RuleResult[]): number {
   const graded = results.filter((r) => r.severity !== "info");

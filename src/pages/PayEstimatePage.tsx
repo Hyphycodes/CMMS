@@ -4,9 +4,10 @@
  * placements are Placed + posted + not already on an estimate. Replaces the stub.
  */
 import { useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useStore } from "@/store/store";
+import { finalOutGate } from "@/domain/rules";
 import type { PayEstimate, PayEstimateLine } from "@/domain/types";
 import { TabBar } from "@/components/ui/TabBar";
 import { Pill } from "@/components/ui/Pill";
@@ -66,6 +67,7 @@ export function PayEstimatePage() {
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold text-ink">Estimate #{e.number}</span>
                 <Pill tone={STATUS_TONE[e.status]}>{e.status}</Pill>
+                {e.isFinal && <Pill tone="green">Final</Pill>}
               </div>
               <div className="text-xs text-ink-soft">{formatDate(e.periodStart)} – {formatDate(e.periodEnd)}</div>
               <div className="text-xs font-medium tabular-nums text-ink">{formatMoney(e.thisEstimateTotal)}</div>
@@ -73,6 +75,8 @@ export function PayEstimatePage() {
           );
         })}
         {estimates.length === 0 && <p className="px-4 py-6 text-sm text-ink-soft">No estimates yet.</p>}
+
+        <FinalOutPanel contractId={contractId} />
       </aside>
 
       <div className="flex min-h-0 flex-1 flex-col">
@@ -92,6 +96,56 @@ export function PayEstimatePage() {
             if (id) setSelectedId(id);
           }}
         />
+      )}
+    </div>
+  );
+}
+
+/** M3 — the process-to-final-out gate (Appendix H), driven by the rules layer. */
+function FinalOutPanel({ contractId }: { contractId: string }) {
+  const navigate = useNavigate();
+  const contract = useStore((s) => s.contract(contractId));
+  const items = useStore((s) => s.items);
+  const payItemsByContract = useStore((s) => s.payItemsByContract);
+  const authorizationsList = useStore((s) => s.authorizationsList);
+  const processFinalOut = useStore((s) => s.processFinalOut);
+  const canSubmit = useStore((s) => s.can("submit_pay_estimate"));
+
+  const gate = useMemo(() => {
+    if (!contract) return [];
+    return finalOutGate(contract, {
+      items: items.filter((i) => i.contractId === contractId),
+      payItems: payItemsByContract.get(contractId) ?? [],
+      authorizations: authorizationsList.filter((a) => a.contractId === contractId),
+    });
+  }, [contract, items, payItemsByContract, authorizationsList, contractId]);
+  if (!contract) return null;
+  const ready = gate.every((r) => r.ok);
+
+  return (
+    <div className="border-t border-line px-4 py-3">
+      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Final Out (Appendix H)</div>
+      <ul className="mb-2 space-y-1">
+        {gate.map((r) => (
+          <li key={r.id} className="flex items-start gap-2 text-xs">
+            <span className={r.ok ? "text-green-600" : "text-amber-600"}>{r.ok ? "✓" : "○"}</span>
+            {r.href && !r.ok ? (
+              <button onClick={() => navigate(r.href!)} className="text-left text-ink-soft hover:text-accent hover:underline">{r.message}</button>
+            ) : (
+              <span className="text-ink-soft">{r.message}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+      {canSubmit && (
+        <button
+          onClick={() => processFinalOut(contractId)}
+          disabled={!ready}
+          title={ready ? "Process the latest estimate as the Final Pay Estimate" : "Resolve the gate items first"}
+          className="w-full rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg hover:bg-accent-hover disabled:opacity-50"
+        >
+          Process to Final Out
+        </button>
       )}
     </div>
   );

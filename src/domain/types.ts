@@ -244,6 +244,8 @@ export interface PayEstimate extends Provenance {
   lines: PayEstimateLine[];
   thisEstimateTotal: number;
   toDateTotal: number;
+  /** M3 — the Final Pay Estimate (process-to-final-out, Appendix H). */
+  isFinal?: boolean;
 }
 
 /** Quantity Book placement entry (Ch. 4) — brief 08. */
