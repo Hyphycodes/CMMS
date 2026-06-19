@@ -88,6 +88,19 @@ export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: (
         <span className="flex-1">Home</span>
       </NavLink>
 
+      <NavLink
+        to="/my-work"
+        className={({ isActive }) =>
+          [
+            "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition",
+            isActive ? "bg-accent-soft font-semibold text-accent" : "text-ink-soft hover:bg-canvas hover:text-ink",
+          ].join(" ")
+        }
+      >
+        <UsersIcon className="text-lg" />
+        <span className="flex-1">My Work</span>
+      </NavLink>
+
       <div className="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
         Contract
       </div>

@@ -191,6 +191,7 @@ export const CONTRACT_61D34: Contract = {
   inventoryCount: INVENTORY_61D34.length,
   readyForReviewCount: 0,
   externalPlanLink: "https://apps.dot.illinois.gov/eplan/desenv/042624/",
+  assignedInspectorIds: ["u_gerardo", "u_insp_2"],
   summary,
   insurance: {
     contractorNo: "1320",

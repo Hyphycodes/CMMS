@@ -106,6 +106,13 @@ interface State {
   can(cap: Capability): boolean;
   canAccessContract(contractId: string): boolean;
 
+  // P1 — "my projects" lens. A supervisor can view another inspector's lens.
+  viewAsUserId: string | null;
+  setViewAs(userId: string | null): void;
+  /** The effective lens user (viewAs target or current user). */
+  lensUserId(): string;
+  myContracts(): Contract[];
+
   savingCount: number;
   toasts: Toast[];
 
@@ -239,6 +246,7 @@ export const useStore = create<State>((set, get) => ({
   users: [],
   currentUser: undefined,
   visibleIds: new Set(),
+  viewAsUserId: null,
 
   savingCount: 0,
   toasts: [],
@@ -264,6 +272,26 @@ export const useStore = create<State>((set, get) => ({
       const { world, eoiDeltas, ledgerDeltas, eoiRowDeltas, payItemStatusDeltas, diaryDeltas, fileRefs } =
         await ds.loadWorld(DEFAULT_SEED_CONFIG);
       const users = buildDemoUsers(world.contracts, world.items);
+      // P1 — derive the assignment lens: every inspector/RE is "assigned to" the
+      // contracts in their explicit scope, layered onto any seeded assignment.
+      const assignBy = new Map<string, Set<string>>();
+      for (const u of users) {
+        if (u.roles.includes("Inspector") || u.roles.includes("ResidentEngineer")) {
+          for (const cid of u.contractIds) {
+            let set = assignBy.get(cid);
+            if (!set) {
+              set = new Set();
+              assignBy.set(cid, set);
+            }
+            set.add(u.id);
+          }
+        }
+      }
+      world.contracts = world.contracts.map((c) => {
+        const extra = assignBy.get(c.id);
+        if (!extra) return c;
+        return { ...c, assignedInspectorIds: [...new Set([...(c.assignedInspectorIds ?? []), ...extra])] };
+      });
       const savedId = (() => {
         try {
           return localStorage.getItem(USER_KEY);
@@ -329,6 +357,16 @@ export const useStore = create<State>((set, get) => ({
 
   can: (cap) => canDo(get().currentUser, cap),
   canAccessContract: (contractId) => get().visibleIds.has(contractId),
+
+  setViewAs: (userId) => set({ viewAsUserId: userId }),
+  lensUserId: () => get().viewAsUserId ?? get().currentUser?.id ?? "",
+  myContracts: () => {
+    const uid = get().lensUserId();
+    const assigned = get().contracts.filter((c) => c.assignedInspectorIds?.includes(uid));
+    // Admin / Documentation have no assignment — their lens is everything visible.
+    if (assigned.length === 0) return get().visibleContracts();
+    return assigned;
+  },
 
   contract: (id) => get().contractsById.get(id),
   visibleContracts: () => {

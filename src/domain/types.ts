@@ -365,6 +365,8 @@ export interface Contract {
   finalReview: FinalReview;
   /** External plan/eplan link (e.g. IDOT eplan URL), shown on the contract page. */
   externalPlanLink?: string;
+  /** P1 — inspector user ids assigned to this contract (the "my projects" lens). */
+  assignedInspectorIds?: string[];
 }
 
 // --- Contract sub-tabs (Ch. 2) — Insurance / Documents / Subs / Final Review

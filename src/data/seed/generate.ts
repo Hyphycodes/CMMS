@@ -611,6 +611,8 @@ function makeRealContract(p: { number: string; name: string; workType: string })
         packet2028Approved: false, eeoRemarks: "", eeoRepresentative: "",
       },
     },
+    // P1 — the real projects are Gerardo's; the roster covers for each other.
+    assignedInspectorIds: ["u_gerardo", "u_insp_2", "u_insp_3"],
   };
 }
 
