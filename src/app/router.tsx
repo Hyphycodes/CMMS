@@ -12,6 +12,7 @@ import { QuantityBookPage } from "@/pages/QuantityBookPage";
 import { PayEstimatePage } from "@/pages/PayEstimatePage";
 import { AuthorizationsPage } from "@/pages/AuthorizationsPage";
 import { MaterialDefinitionPage, VendorsPage, MixDesignPage } from "@/pages/MaterialsPages";
+import { MaterialAllowancePage } from "@/pages/MaterialAllowancePage";
 import {
   MaterialsInventoryPage,
   MaterialsAcceptancePage,
@@ -45,6 +46,7 @@ export const router = createBrowserRouter([
       { path: "contract/:contractId/inventory/:itemId", element: <InventoryPage /> },
       { path: "contract/:contractId/diary", element: <DiaryPage /> },
       { path: "contract/:contractId/quantity-book", element: <QuantityBookPage /> },
+      { path: "contract/:contractId/material-allowance", element: <MaterialAllowancePage /> },
       { path: "contract/:contractId/pay-estimate", element: <PayEstimatePage /> },
       { path: "contract/:contractId/authorizations", element: <AuthorizationsPage /> },
     ],

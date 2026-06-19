@@ -21,6 +21,7 @@ const TREE_NODES = [
   { key: "", label: "Contract", Icon: SummaryIcon, end: true },
   { key: "diary", label: "Diary", Icon: DiaryIcon },
   { key: "quantity-book", label: "Quantity Book", Icon: BookIcon },
+  { key: "material-allowance", label: "Material Allowance", Icon: TagIcon },
   { key: "inventory", label: "Inventory", Icon: BoxesIcon },
   { key: "pay-estimate", label: "Pay Estimate", Icon: EstimateIcon },
   { key: "authorizations", label: "Authorizations", Icon: AuthIcon },
