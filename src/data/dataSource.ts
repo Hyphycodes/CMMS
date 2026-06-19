@@ -28,8 +28,15 @@ import type {
   FinalReview,
   MaterialAllowanceLine,
   QmpPackage,
+  StoredFileRef,
 } from "@/domain/types";
 import type { World, SeedConfig } from "./seed/generate";
+
+/** Scope a file is attached to, e.g. { entity: "eoi", entityId: "inv_12:eoi_3" }. */
+export interface FileScope {
+  entity: string;
+  entityId: string;
+}
 
 export interface EoiDelta {
   approval: EOIApproval;
@@ -61,6 +68,8 @@ export interface LoadResult {
   payEstimateDeltas: Record<string, PayEstimate>;
   /** Authorization create/approve/publish, keyed by authorization id (brief 10) */
   authorizationDeltas: Record<string, Authorization>;
+  /** Stored file references, keyed by `${entity}:${entityId}` (S1). URLs hydrated. */
+  fileRefs: Record<string, StoredFileRef[]>;
 }
 
 export interface InventoryStatusUpdate {
@@ -125,6 +134,12 @@ export interface DataSource {
   // Missing modules (M1/M2).
   persistMaterialAllowance(contractId: string, lines: MaterialAllowanceLine[]): Promise<void>;
   persistQmpPackage(pkg: QmpPackage): Promise<void>;
+
+  // File storage (S1) — real bytes in storage, only the reference in the delta.
+  uploadFile(scope: FileScope, file: File): Promise<StoredFileRef>;
+  deleteFile(ref: StoredFileRef): Promise<void>;
+  /** Persist the reference list for a scope (the delta). */
+  persistFileRefs(scopeKey: string, refs: StoredFileRef[]): Promise<void>;
 }
 
 let cached: DataSource | null = null;

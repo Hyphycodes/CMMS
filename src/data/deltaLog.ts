@@ -38,6 +38,7 @@ export type DeltaEntity =
   | "qmpPackage"
   | "employee"
   | "contract"
+  | "fileRefs"
   | "import";
 
 export interface DeltaOp {
@@ -124,6 +125,48 @@ async function idbPut(ops: DeltaOp[]): Promise<void> {
     const tx = db.transaction(STORE, "readwrite");
     const store = tx.objectStore(STORE);
     for (const op of ops) store.put(op);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// --- file blobs (S1) — bytes live in the shared `files` store ---------------
+
+interface FileBlobRow {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  blob: Blob;
+}
+
+export async function putFileBlob(row: FileBlobRow): Promise<void> {
+  if (!hasIndexedDB()) return; // bytes can't persist without IndexedDB; ref still works in-session
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction("files", "readwrite");
+    tx.objectStore("files").put(row);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function getFileBlob(id: string): Promise<FileBlobRow | undefined> {
+  if (!hasIndexedDB()) return undefined;
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction("files", "readonly").objectStore("files").get(id);
+    req.onsuccess = () => resolve(req.result as FileBlobRow | undefined);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function deleteFileBlob(id: string): Promise<void> {
+  if (!hasIndexedDB()) return;
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction("files", "readwrite");
+    tx.objectStore("files").delete(id);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });

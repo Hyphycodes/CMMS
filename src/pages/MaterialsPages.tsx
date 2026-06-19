@@ -3,12 +3,14 @@
  * Global (no contract scope). Each reuses DataGrid; the material picker that
  * powers samples/inventory/quantity-book is the one IntelligentSearch (brief 01).
  */
+import { useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useStore } from "@/store/store";
 import { MATERIALS, VENDORS } from "@/data/reference";
 import type { Material, MixDesign, Vendor } from "@/domain/types";
 import { DataGrid } from "@/components/ui/DataGrid";
 import { Pill } from "@/components/ui/Pill";
+import { FileDrop } from "@/components/ui/FileDrop";
 
 function PageShell({ title, subtitle, children, action }: { title: string; subtitle: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
@@ -86,24 +88,45 @@ export function VendorsPage() {
 
 export function MixDesignPage() {
   const mixDesigns = useStore((s) => s.mixDesignsList);
-  const pushToast = useStore((s) => s.pushToast);
+  const [selected, setSelected] = useState<MixDesign | null>(null);
   const columns: ColumnDef<MixDesign>[] = [
     { id: "number", accessorKey: "number", header: "Mix Design", size: 140, cell: ({ getValue }) => <span className="font-mono text-[13px] font-semibold">{getValue() as string}</span> },
     { id: "materialCode", accessorKey: "materialCode", header: "Material Code", size: 130, cell: ({ getValue }) => <span className="font-mono text-[13px]">{getValue() as string}</span> },
     { id: "family", accessorKey: "family", header: "Family", size: 120 },
     { id: "producer", accessorKey: "producer", header: "Producer", size: 240, meta: { grow: true } },
     { id: "approved", accessorFn: (m) => (m.approved ? "Approved" : "Pending"), header: "Status", size: 120, cell: ({ row }) => <Pill tone={row.original.approved ? "green" : "amber"}>{row.original.approved ? "Approved" : "Pending"}</Pill> },
+    {
+      id: "docs",
+      header: "Mix Design Doc",
+      size: 150,
+      cell: ({ row }) => (
+        <button
+          onClick={() => setSelected(row.original)}
+          className="rounded-md border border-line px-2 py-0.5 text-xs font-medium text-accent hover:bg-canvas"
+        >
+          Documents
+        </button>
+      ),
+    },
   ];
   return (
     <PageShell
       title="Mix Design"
       subtitle="HMA / PCC mix designs — feed the inventory ledger Mix Design field and HMA/PCC samples."
-      action={
-        <button onClick={() => pushToast("info", "Mix design upload + storage lands in brief 12.")} className="rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-accent-fg hover:bg-accent-hover">
-          + Upload Mix Design
-        </button>
-      }
     >
+      {selected && (
+        <div className="mb-3 rounded-xl border border-line bg-surface p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <div className="text-sm font-semibold text-ink">
+              Documents for <span className="font-mono">{selected.number}</span> · {selected.producer}
+            </div>
+            <button onClick={() => setSelected(null)} className="text-xs text-ink-faint hover:text-ink">
+              Close
+            </button>
+          </div>
+          <FileDrop scope={{ entity: "mixDesign", entityId: selected.number }} label="Upload mix design" />
+        </div>
+      )}
       <DataGrid
         data={mixDesigns}
         columns={columns}

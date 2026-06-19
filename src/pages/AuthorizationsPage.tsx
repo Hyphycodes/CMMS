@@ -12,6 +12,7 @@ import { AUTH_TYPES, type AuthType, type Authorization, type AuthItem } from "@/
 import { TabBar } from "@/components/ui/TabBar";
 import { Pill } from "@/components/ui/Pill";
 import { FieldGroup } from "@/components/ui/FieldGroup";
+import { FileDrop } from "@/components/ui/FileDrop";
 import { IntelligentSearch } from "@/components/ui/IntelligentSearch";
 import { EditableRowTable, EditText, EditNumber, type EditableColumn } from "@/components/ui/EditableRowTable";
 import { CheckIcon } from "@/components/ui/icons";
@@ -156,8 +157,11 @@ function AuthDetail({ auth, canManage }: { auth: Authorization; canManage: boole
               { label: "Status", value: auth.status },
               { label: "Created", value: auth.createdDate, type: "date" },
               { label: "Net Change", value: auth.netChange, type: "money" },
-              { label: "Attachment (BC 24)", value: auth.hasAttachment, type: "bool" },
             ]} />
+            <div>
+              <span className="mb-1 block text-xs font-medium text-ink-soft">Attachment (BC 24)</span>
+              <FileDrop scope={{ entity: "authorization", entityId: auth.id }} disabled={!editable} label="Attach BC 24" />
+            </div>
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-ink-soft">Description</span>
               <textarea value={auth.description} disabled={!editable} rows={3} onChange={(e) => saveAuthorization({ ...auth, description: e.target.value })} className="w-full resize-none rounded-lg border border-line bg-canvas px-3 py-2 text-sm outline-none focus:border-accent disabled:opacity-70" />

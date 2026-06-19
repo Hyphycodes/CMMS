@@ -10,6 +10,7 @@ import type { DiaryDay } from "@/domain/types";
 import { TabBar } from "@/components/ui/TabBar";
 import { Pill } from "@/components/ui/Pill";
 import { CalendarIcon, SearchIcon } from "@/components/ui/icons";
+import { FileDrop } from "@/components/ui/FileDrop";
 import { formatDate } from "@/lib/format";
 
 const WEATHER = ["Clear", "Partly Cloudy", "Cloudy", "Rain", "Showers", "Snow", "Windy", "Fog"];
@@ -170,6 +171,12 @@ function SummaryTab({ day, editable, update, amended }: { day: DiaryDay; editabl
           ))}
           {day.contractorWork.length === 0 && <p className="text-sm text-ink-faint">No contractor work recorded.</p>}
         </div>
+      </section>
+
+      <section>
+        <Labeled label="Attachments (Ch. 3)">
+          <FileDrop scope={{ entity: "diary", entityId: `${day.contractId}:${day.date}` }} disabled={!editable} label="Attach a Document" />
+        </Labeled>
       </section>
     </div>
   );

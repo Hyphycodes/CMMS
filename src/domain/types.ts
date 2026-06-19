@@ -728,6 +728,24 @@ export interface QmpPackage extends Provenance {
 }
 
 // ---------------------------------------------------------------------------
+// File storage (S1) — the DataSource file seam every doc affordance rides on
+// ---------------------------------------------------------------------------
+
+/** A reference to a real stored file. Only the reference lands in the delta. */
+export interface StoredFileRef {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  /** object URL (local) or public/signed URL (supabase); rehydrated on load */
+  url: string;
+  uploadedBy: string;
+  uploadedAt: string;
+  /** optimistic "uploading…" placeholder until the background upload resolves */
+  uploading?: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // Import Log (F4) — every ingestion run, surfaced from the delta log
 // ---------------------------------------------------------------------------
 

@@ -14,6 +14,7 @@ import type {
   LoadResult,
   InventoryStatusUpdate,
   EoiDelta,
+  FileScope,
 } from "../dataSource";
 import type {
   Contract,
@@ -36,6 +37,7 @@ import type {
   FinalReview,
   MaterialAllowanceLine,
   QmpPackage,
+  StoredFileRef,
 } from "@/domain/types";
 import type { SeedConfig, World } from "../seed/generate";
 import { TEST_TEMPLATES } from "../seed/generate";
@@ -163,7 +165,41 @@ export function createSupabaseDataSource(): DataSource {
         payItemDeltas: {},
         payEstimateDeltas: {},
         authorizationDeltas: {},
+        fileRefs: await loadFileRefs(db),
       };
+    },
+
+    async uploadFile(scope: FileScope, file: File): Promise<StoredFileRef> {
+      const id = `file_${scope.entity}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+      const path = `${scope.entity}/${scope.entityId}/${id}-${file.name}`;
+      const up = await db.storage.from("proof-files").upload(path, file, { upsert: true });
+      if (up.error) throw up.error;
+      const { data } = db.storage.from("proof-files").getPublicUrl(path);
+      return {
+        id,
+        name: file.name,
+        mimeType: file.type || "application/octet-stream",
+        size: file.size,
+        url: data.publicUrl,
+        uploadedBy: "",
+        uploadedAt: new Date().toISOString(),
+      };
+    },
+
+    async deleteFile(ref: StoredFileRef): Promise<void> {
+      // path is encoded in the public URL after the bucket name
+      const marker = "/proof-files/";
+      const i = ref.url.indexOf(marker);
+      if (i >= 0) {
+        const path = decodeURIComponent(ref.url.slice(i + marker.length));
+        const { error } = await db.storage.from("proof-files").remove([path]);
+        if (error) throw error;
+      }
+    },
+
+    async persistFileRefs(scopeKey: string, refs: StoredFileRef[]): Promise<void> {
+      const { error } = await db.from("file_refs").upsert({ scope_key: scopeKey, refs }, { onConflict: "scope_key" });
+      if (error) throw error;
     },
 
     async persistInventoryStatus(updates: InventoryStatusUpdate[]): Promise<void> {
@@ -413,6 +449,13 @@ export function createSupabaseDataSource(): DataSource {
       if (error) throw error;
     },
   };
+}
+
+async function loadFileRefs(db: SupabaseClient): Promise<Record<string, StoredFileRef[]>> {
+  const out: Record<string, StoredFileRef[]> = {};
+  const res = await db.from("file_refs").select("*");
+  for (const r of res.data ?? []) out[r.scope_key as string] = (r.refs as StoredFileRef[]) ?? [];
+  return out;
 }
 
 function itemToRow(i: InventoryItem): Record<string, unknown> {

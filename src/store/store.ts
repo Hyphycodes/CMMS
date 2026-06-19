@@ -29,7 +29,9 @@ import type {
   Authorization,
   MixDesign,
   Provenance,
+  StoredFileRef,
 } from "@/domain/types";
+import type { FileScope } from "@/data/dataSource";
 import { lineAmount, sumAmounts } from "@/domain/money";
 import { getDataSource } from "@/data/dataSource";
 import { DEFAULT_SEED_CONFIG, buildOverlaidDetail, buildDiaryDay } from "@/data/seed/generate";
@@ -138,6 +140,12 @@ interface State {
   addInventoryDocs(itemId: string, docs: InventoryDoc[]): void;
   removeInventoryDoc(itemId: string, docId: string): void;
 
+  // real file storage (S1) — keyed by `${entity}:${entityId}`
+  fileRefs: Record<string, StoredFileRef[]>;
+  filesFor(scopeKey: string): StoredFileRef[];
+  uploadFiles(scope: FileScope, files: File[]): void;
+  removeFile(scope: FileScope, ref: StoredFileRef): void;
+
   // inventory writes (brief 05)
   upsertInventoryItem(item: InventoryItem): void;
   setLedger(itemId: string, rows: LedgerEntry[]): void;
@@ -195,6 +203,7 @@ export const useStore = create<State>((set, get) => ({
   eoiRowDeltas: {},
   payItemStatusDeltas: {},
   inventoryDocs: {},
+  fileRefs: {},
 
   diaryDeltas: {},
   suspensionsByContract: new Map(),
@@ -233,7 +242,7 @@ export const useStore = create<State>((set, get) => ({
     set({ status: "loading" });
     try {
       const ds = await getDataSource();
-      const { world, eoiDeltas, ledgerDeltas, eoiRowDeltas, payItemStatusDeltas, diaryDeltas } =
+      const { world, eoiDeltas, ledgerDeltas, eoiRowDeltas, payItemStatusDeltas, diaryDeltas, fileRefs } =
         await ds.loadWorld(DEFAULT_SEED_CONFIG);
       const users = buildDemoUsers(world.contracts, world.items);
       const savedId = (() => {
@@ -267,6 +276,7 @@ export const useStore = create<State>((set, get) => ({
         eoiRowDeltas,
         payItemStatusDeltas,
         diaryDeltas,
+        fileRefs,
         suspensionsByContract: world.suspensionsByContract,
         placementsList: world.placements,
         payEstimatesList: world.payEstimates,
@@ -468,6 +478,73 @@ export const useStore = create<State>((set, get) => ({
     const doc = cur.find((d) => d.id === docId);
     if (doc) URL.revokeObjectURL(doc.url);
     set({ inventoryDocs: { ...get().inventoryDocs, [itemId]: cur.filter((d) => d.id !== docId) } });
+  },
+
+  filesFor: (scopeKey) => get().fileRefs[scopeKey] ?? [],
+
+  uploadFiles(scope, files) {
+    if (files.length === 0) return;
+    const key = `${scope.entity}:${scope.entityId}`;
+    const user = get().currentUser;
+    const existing = get().fileRefs[key] ?? [];
+    // Optimistic "uploading…" placeholders (per cross-cutting rule 1).
+    const placeholders: StoredFileRef[] = files.map((f, i) => ({
+      id: `tmp_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`,
+      name: f.name,
+      mimeType: f.type || "application/octet-stream",
+      size: f.size,
+      url: "",
+      uploadedBy: user?.name ?? "",
+      uploadedAt: new Date().toISOString(),
+      uploading: true,
+    }));
+    set({ fileRefs: { ...get().fileRefs, [key]: [...existing, ...placeholders] } });
+
+    void (async () => {
+      set({ savingCount: get().savingCount + 1 });
+      const ds = await getDataSource();
+      for (let i = 0; i < files.length; i++) {
+        try {
+          const ref = await ds.uploadFile(scope, files[i]);
+          const finalRef: StoredFileRef = { ...ref, uploadedBy: user?.name ?? ref.uploadedBy, uploading: false };
+          set({
+            fileRefs: {
+              ...get().fileRefs,
+              [key]: (get().fileRefs[key] ?? []).map((r) => (r.id === placeholders[i].id ? finalRef : r)),
+            },
+          });
+        } catch {
+          set({ fileRefs: { ...get().fileRefs, [key]: (get().fileRefs[key] ?? []).filter((r) => r.id !== placeholders[i].id) } });
+          get().pushToast("error", `Couldn't upload ${files[i].name}.`);
+        }
+      }
+      try {
+        const resolved = (get().fileRefs[key] ?? []).filter((r) => !r.uploading);
+        await ds.persistFileRefs(key, resolved);
+      } catch {
+        get().pushToast("error", "Couldn't save the document list.");
+      } finally {
+        set({ savingCount: Math.max(0, get().savingCount - 1) });
+        set({ pendingChanges: deltaLog.unsyncedCount() });
+      }
+    })();
+  },
+
+  removeFile(scope, ref) {
+    const key = `${scope.entity}:${scope.entityId}`;
+    const prev = get().fileRefs[key] ?? [];
+    const next = prev.filter((r) => r.id !== ref.id);
+    set({ fileRefs: { ...get().fileRefs, [key]: next } });
+    void persist(
+      get,
+      set,
+      async (ds) => {
+        await ds.deleteFile(ref);
+        await ds.persistFileRefs(key, next);
+      },
+      () => set({ fileRefs: { ...get().fileRefs, [key]: prev } }),
+      `Couldn't remove ${ref.name}`,
+    );
   },
 
   setLedger(itemId, rows) {

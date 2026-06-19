@@ -6,6 +6,7 @@ import type { Contract, ContractSummary, ProjectDocumentRow, SubcontractorRow } 
 import type { PillTone } from "@/domain/status";
 import { Pill } from "@/components/ui/Pill";
 import { FieldGroup } from "@/components/ui/FieldGroup";
+import { FileDrop } from "@/components/ui/FileDrop";
 import { DataGrid } from "@/components/ui/DataGrid";
 import { IntelligentSearch } from "@/components/ui/IntelligentSearch";
 import { CONTRACTORS, DESIGNER_FIRMS } from "@/data/reference";
@@ -341,10 +342,11 @@ function DocumentsTab({ contract }: { contract: Contract }) {
             }
             className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg transition hover:bg-accent-hover"
           >
-            + Upload Document
+            + Add Document Record
           </button>
         )}
       </div>
+      <FileDrop scope={{ entity: "contractDoc", entityId: contract.id }} disabled={!canAuthor} label="Upload a project document" />
       <div className="h-[440px]">
         <DataGrid
           data={contract.projectDocuments}

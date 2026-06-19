@@ -35,7 +35,9 @@ import type {
   FinalReview,
   MaterialAllowanceLine,
   QmpPackage,
+  StoredFileRef,
 } from "@/domain/types";
+import type { FileScope } from "../dataSource";
 import { generateWorld, type SeedConfig } from "../seed/generate";
 import * as deltaLog from "../deltaLog";
 import type { DeltaOp, DeltaEntity } from "../deltaLog";
@@ -64,6 +66,7 @@ interface StoredDeltas {
   contracts: Record<string, Contract>;
   materialAllowances: Record<string, MaterialAllowanceLine[]>;
   qmpPackages: Record<string, QmpPackage>;
+  fileRefs: Record<string, StoredFileRef[]>;
 }
 
 function emptyDeltas(): StoredDeltas {
@@ -89,6 +92,7 @@ function emptyDeltas(): StoredDeltas {
     contracts: {},
     materialAllowances: {},
     qmpPackages: {},
+    fileRefs: {},
   };
 }
 
@@ -208,6 +212,9 @@ export function replay(ops: DeltaOp[]): StoredDeltas {
       case "qmpPackage":
         d.qmpPackages[op.entityId] = p as QmpPackage;
         break;
+      case "fileRefs":
+        d.fileRefs[op.entityId] = p as StoredFileRef[];
+        break;
       case "import":
         break; // import-log rows are surfaced from the log directly, not materialized here
     }
@@ -322,6 +329,18 @@ export function createLocalDataSource(): DataSource {
         }
       }
 
+      // Rehydrate file object-URLs from the IndexedDB blob store (S1) — object
+      // URLs don't survive reload, so rebuild them from the persisted bytes.
+      const fileRefs: Record<string, StoredFileRef[]> = {};
+      for (const [scopeKey, refs] of Object.entries(deltas.fileRefs)) {
+        const hydrated: StoredFileRef[] = [];
+        for (const ref of refs) {
+          const row = await deltaLog.getFileBlob(ref.id);
+          hydrated.push(row ? { ...ref, url: URL.createObjectURL(row.blob), uploading: false } : ref);
+        }
+        fileRefs[scopeKey] = hydrated;
+      }
+
       return {
         world,
         eoiDeltas: deltas.eoiApproval,
@@ -333,7 +352,43 @@ export function createLocalDataSource(): DataSource {
         payItemDeltas: deltas.payItems,
         payEstimateDeltas: deltas.payEstimates,
         authorizationDeltas: deltas.authorizations,
+        fileRefs,
       };
+    },
+
+    async uploadFile(scope: FileScope, file: File): Promise<StoredFileRef> {
+      await latency();
+      maybeFail();
+      const id = `file_${scope.entity}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+      await deltaLog.putFileBlob({ id, name: file.name, mimeType: file.type || "application/octet-stream", size: file.size, blob: file });
+      return {
+        id,
+        name: file.name,
+        mimeType: file.type || "application/octet-stream",
+        size: file.size,
+        url: URL.createObjectURL(file),
+        uploadedBy: deltaLog.getActor().userId,
+        uploadedAt: new Date().toISOString(),
+      };
+    },
+
+    async deleteFile(ref: StoredFileRef): Promise<void> {
+      await latency();
+      maybeFail();
+      if (ref.url.startsWith("blob:")) {
+        try {
+          URL.revokeObjectURL(ref.url);
+        } catch {
+          /* non-fatal */
+        }
+      }
+      await deltaLog.deleteFileBlob(ref.id);
+    },
+
+    async persistFileRefs(scopeKey: string, refs: StoredFileRef[]): Promise<void> {
+      // strip the ephemeral object-URL + uploading flag from the persisted ref
+      const lean = refs.map((r) => ({ ...r, url: "", uploading: false }));
+      await commit("fileRefs", scopeKey, lean);
     },
 
     async flush(): Promise<number> {
