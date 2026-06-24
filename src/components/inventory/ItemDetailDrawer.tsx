@@ -32,9 +32,11 @@ import {
   EditNumber,
   EditDate,
   EditSelect,
-  EditChips,
 } from "@/components/ui/EditableRowTable";
+import { MultiSelect } from "@/components/ui/MultiSelect";
+import { TestIdSelect } from "@/components/inventory/TestIdSelect";
 import { inventoryTone, eoiTone, payItemTone, groupTone, isTestEditable } from "@/domain/status";
+import type { TestIdUsage } from "@/domain/rules/testIdUsage";
 import { formatDate, formatQty, formatNumber } from "@/lib/format";
 
 const TABS = ["Details", "Quantity Ledger", "Evidence of Inspection", "Pay Item Materials", "History"] as const;
@@ -359,6 +361,7 @@ function LedgerTab({
   canEdit: boolean;
 }) {
   const setLedger = useStore((s) => s.setLedger);
+  const fillInventory = useStore((s) => s.fillInventory);
   const rows = detail.ledger;
   const received = rows.filter((l) => l.type === "Received").reduce((s, l) => s + l.transactionQty, 0);
   const payItemOptions = detail.payItemNumbers.length ? detail.payItemNumbers : payItems.map((p) => p.number);
@@ -535,12 +538,21 @@ function LedgerTab({
       )}
 
       {canEdit && (
-        <button
-          onClick={addRow}
-          className="rounded-lg border border-dashed border-line px-3 py-1.5 text-sm font-medium text-accent transition hover:border-accent hover:bg-accent-soft"
-        >
-          + Add ledger row
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={addRow}
+            className="rounded-lg border border-dashed border-line px-3 py-1.5 text-sm font-medium text-accent transition hover:border-accent hover:bg-accent-soft"
+          >
+            + Add ledger row
+          </button>
+          <button
+            onClick={() => fillInventory(itemId)}
+            title="Fill the ledger up to the quantity the pay-item budget allows, in the material unit."
+            className="rounded-lg border border-accent bg-accent-soft px-3 py-1.5 text-sm font-semibold text-accent transition hover:bg-accent hover:text-accent-fg"
+          >
+            ⚡ Fill to budget
+          </button>
+        </div>
       )}
 
       {menu && (
@@ -562,13 +574,31 @@ function LedgerTab({
 
 function EOITab({ detail, itemId, canEdit }: { detail: InventoryDetail; itemId: string; canEdit: boolean }) {
   const setEoi = useStore((s) => s.setEoi);
+  const fillInventory = useStore((s) => s.fillInventory);
   const samplesList = useStore((s) => s.samplesList);
+  const eoiDeltas = useStore((s) => s.eoiDeltas);
+  const ledgerDeltas = useStore((s) => s.ledgerDeltas);
+  const eoiRowDeltas = useStore((s) => s.eoiRowDeltas);
+  const payItemStatusDeltas = useStore((s) => s.payItemStatusDeltas);
+  const matchingTestIdsFn = useStore((s) => s.matchingTestIds);
+  const testIdUsageFn = useStore((s) => s.testIdUsage);
   const rows = detail.eoi;
   const ledgerIds = detail.ledger.map((l) => l.id);
-  // approved Test IDs from samples linked to this inventory (brief 04 → 05)
-  const approvedTestIds = useMemo(
-    () => samplesList.filter((s) => s.inventoryItemId === itemId && s.status === "Approved").map((s) => s.testId),
-    [samplesList, itemId],
+  const material = MATERIALS.find((m) => m.code === detail.materialCode);
+
+  // The real Test IDs that match THIS inventory's material AND producer (PDF p.8).
+  // (Function selectors read store state internally — list the slices they depend
+  // on so the memo recomputes when those change.)
+  const matchingTestIds = useMemo(
+    () => matchingTestIdsFn(itemId),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [matchingTestIdsFn, itemId, samplesList],
+  );
+  // Live program-wide Test ID usage (capacity − consumed) drives the gray-out.
+  const usage = useMemo(
+    () => testIdUsageFn(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [testIdUsageFn, eoiDeltas, ledgerDeltas, eoiRowDeltas, payItemStatusDeltas, samplesList],
   );
   // Brief 22 — Test IDs whose sample is decided (Approved/Rejected) lock the field.
   const lockedTestIds = useMemo(
@@ -601,10 +631,26 @@ function EOITab({ detail, itemId, canEdit }: { detail: InventoryDetail; itemId: 
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-ink-soft">
-        Every Ledger ID row needs approval before the inventory can be completed. Approved · Approved as
-        Exception · Rejected (a note is required for exceptions and rejections). Right-click a row to add/remove.
-      </p>
+      {/* Required vs Actual at a glance — keep the material's MOA / Acceptable EOI
+          visible on this tab (PDF pp.6–7) so the reviewer can compare. */}
+      <EOISpecHeader material={material} />
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-ink-soft">
+          Every Ledger ID row needs approval before the inventory can be completed. Approved · Approved as
+          Exception · Rejected (a note is required for exceptions and rejections). Right-click a row to add/remove.
+        </p>
+        {canEdit && (
+          <button
+            onClick={() => fillInventory(itemId)}
+            title="Fill the ledger + EOI up to the quantity the pay-item budget allows, tied to matching Test IDs."
+            className="shrink-0 rounded-lg border border-accent bg-accent-soft px-3 py-1.5 text-sm font-semibold text-accent transition hover:bg-accent hover:text-accent-fg"
+          >
+            ⚡ Fill to budget
+          </button>
+        )}
+      </div>
+
       <div className="space-y-2.5">
         {rows.map((row) => (
           <div
@@ -619,7 +665,8 @@ function EOITab({ detail, itemId, canEdit }: { detail: InventoryDetail; itemId: 
               row={row}
               itemId={itemId}
               ledgerIds={ledgerIds}
-              approvedTestIds={approvedTestIds}
+              matchingTestIds={matchingTestIds}
+              usage={usage}
               testIdLocked={!!row.testId && lockedTestIds.has(row.testId)}
               canEdit={canEdit}
               onEditRow={editRow}
@@ -648,19 +695,22 @@ function EOITab({ detail, itemId, canEdit }: { detail: InventoryDetail; itemId: 
           + Add EOI row
         </button>
       )}
-
-      <EoiDocuments itemId={itemId} canEdit={canEdit} />
     </div>
   );
 }
 
-// --- Document upload (real files via the S1 file seam) ---------------------
-
-function EoiDocuments({ itemId, canEdit }: { itemId: string; canEdit: boolean }) {
+// Required MOA / Acceptable EOI banner for the material under review.
+function EOISpecHeader({ material }: { material: { moa: string; acceptableEoi: string[] } | undefined }) {
+  if (!material) return null;
   return (
-    <div className="border-t border-line pt-4">
-      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Documents</div>
-      <FileDrop scope={{ entity: "inventoryDoc", entityId: itemId }} disabled={!canEdit} label="Add document" />
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border border-line bg-canvas px-4 py-2.5 text-sm">
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Required for this material</span>
+      <span className="text-ink-soft">
+        MOA <span className="font-medium text-ink">{material.moa || "—"}</span>
+      </span>
+      <span className="text-ink-soft">
+        Acceptable EOI <span className="font-mono font-medium text-ink">{material.acceptableEoi.join(" · ") || "—"}</span>
+      </span>
     </div>
   );
 }
@@ -669,7 +719,8 @@ function EOIRow({
   row,
   itemId,
   ledgerIds,
-  approvedTestIds,
+  matchingTestIds,
+  usage,
   testIdLocked,
   canEdit,
   onEditRow,
@@ -678,7 +729,8 @@ function EOIRow({
   row: EOIEntry;
   itemId: string;
   ledgerIds: number[];
-  approvedTestIds: string[];
+  matchingTestIds: string[];
+  usage: Map<string, TestIdUsage>;
   testIdLocked: boolean;
   canEdit: boolean;
   onEditRow: (id: string, patch: Partial<EOIEntry>) => void;
@@ -686,50 +738,61 @@ function EOIRow({
 }) {
   const setApproval = useStore((s) => s.setEoiApproval);
   const canApprove = useStore((s) => s.can("approve_eoi"));
-  const [note, setNote] = useState(row.note);
-  useEffect(() => setNote(row.note), [row.id, row.note]);
+  const userName = useStore((s) => s.currentUser?.name ?? "");
+  const [draft, setDraft] = useState("");
   const needsNote = row.approval === "Approved as Exception" || row.approval === "Rejected";
+  const hasNote = row.note.trim().length > 0;
+
+  const appendComment = () => {
+    const text = draft.trim();
+    if (!text) return;
+    const stamp = `— ${userName || "Reviewer"} ${formatStamp()} —`;
+    const next = row.note ? `${row.note}\n${stamp}\n${text}` : `${stamp}\n${text}`;
+    setApproval(itemId, row.id, row.approval, next);
+    setDraft("");
+  };
 
   return (
     <div className="rounded-lg border border-line p-3">
       <div className="flex flex-wrap items-start gap-x-5 gap-y-2 text-sm">
         <Meta label="Ledger IDs">
-          <EditChips
+          <MultiSelect
             selected={row.ledgerIds.map(String)}
             options={ledgerIds.map(String)}
             disabled={!canEdit}
-            onToggle={(next) => onEditRow(row.id, { ledgerIds: next.map(Number) })}
+            width={96}
+            placeholder="—"
+            summary={(sel) => (sel.length === 0 ? <span className="text-ink-faint">—</span> : summarizeLedgerIds(sel))}
+            onChange={(next) => onEditRow(row.id, { ledgerIds: next.map(Number).sort((a, b) => a - b) })}
           />
         </Meta>
         <Meta label="Actual EOI">
-          <EditChips selected={row.actualEoi} options={EOI_CODES} disabled={!canEdit} onToggle={(next) => onEditRow(row.id, { actualEoi: next })} />
+          <MultiSelect
+            selected={row.actualEoi}
+            options={EOI_CODES}
+            disabled={!canEdit}
+            width={120}
+            onChange={(next) => onEditRow(row.id, { actualEoi: next })}
+          />
         </Meta>
-        <Meta label="MOA">
-          <EditChips selected={row.actualMoa} options={MOA_CODES} disabled={!canEdit} onToggle={(next) => onEditRow(row.id, { actualMoa: next })} />
+        <Meta label="Actual MOA">
+          <MultiSelect
+            selected={row.actualMoa}
+            options={MOA_CODES}
+            disabled={!canEdit}
+            width={110}
+            onChange={(next) => onEditRow(row.id, { actualMoa: next })}
+          />
         </Meta>
         <Meta label="Test ID">
-          {/* inline-editable: free text + autocomplete of approved Test IDs */}
-          <input
-            key={row.testId}
-            defaultValue={row.testId}
-            disabled={!canEdit || testIdLocked}
-            title={testIdLocked ? "Locked — the linked sample has been approved/rejected" : undefined}
-            list={approvedTestIds.length ? `tid-${row.id}` : undefined}
-            placeholder="—"
-            onBlur={(e) => {
-              const v = e.target.value.trim();
-              if (v !== row.testId) onEditRow(row.id, { testId: v });
-            }}
-            onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-            className="w-28 rounded-md border border-line bg-surface px-2 py-1 font-mono text-sm outline-none focus:border-accent disabled:opacity-60"
+          <TestIdSelect
+            value={row.testId}
+            options={matchingTestIds}
+            usage={usage}
+            disabled={!canEdit}
+            locked={testIdLocked}
+            onChange={(v) => onEditRow(row.id, { testId: v })}
           />
-          {approvedTestIds.length > 0 && (
-            <datalist id={`tid-${row.id}`}>
-              {approvedTestIds.map((t) => (
-                <option key={t} value={t} />
-              ))}
-            </datalist>
-          )}
         </Meta>
         <div className="min-w-[180px] flex-1">
           <FileDrop scope={{ entity: "eoi", entityId: `${itemId}:${row.id}` }} disabled={!canEdit} label="Attach doc" compact />
@@ -748,7 +811,7 @@ function EOIRow({
             key={a}
             disabled={!canApprove}
             title={canApprove ? undefined : "Approval is documentation-only."}
-            onClick={() => setApproval(itemId, row.id, a, note)}
+            onClick={() => setApproval(itemId, row.id, a, row.note)}
             className={[
               "rounded-md border px-2.5 py-1 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-50",
               row.approval === a
@@ -764,27 +827,55 @@ function EOIRow({
           </button>
         ))}
         {row.approval !== "Unset" && canApprove && (
-          <button onClick={() => setApproval(itemId, row.id, "Unset", "")} className="rounded-md px-2 py-1 text-xs text-ink-faint hover:bg-canvas">
+          <button onClick={() => setApproval(itemId, row.id, "Unset", row.note)} className="rounded-md px-2 py-1 text-xs text-ink-faint hover:bg-canvas">
             Reset
           </button>
         )}
       </div>
 
-      {needsNote && (
-        <input
-          value={note}
-          disabled={!canApprove}
-          onChange={(e) => setNote(e.target.value)}
-          onBlur={() => setApproval(itemId, row.id, row.approval, note)}
-          placeholder="Reason required…"
-          className={[
-            "mt-2 w-full rounded-md border px-2.5 py-1.5 text-sm outline-none",
-            note.trim() ? "border-line focus:border-accent" : "border-amber-300 bg-amber-50 focus:border-amber-400",
-          ].join(" ")}
-        />
+      {/* Append-only Note with name + date stamp on each entry (PDF p.10). */}
+      {(hasNote || canApprove) && (
+        <div className="mt-2.5 rounded-md border border-line bg-canvas/60 p-2">
+          {hasNote && (
+            <pre className="mb-2 whitespace-pre-wrap font-sans text-[13px] leading-snug text-ink-soft">{row.note}</pre>
+          )}
+          {needsNote && !hasNote && (
+            <p className="mb-1.5 text-xs font-medium text-amber-700">A note is required for {row.approval}.</p>
+          )}
+          {canApprove && (
+            <div className="flex items-end gap-2">
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                rows={1}
+                placeholder="Append comment…"
+                className="min-h-[34px] flex-1 resize-y rounded-md border border-line bg-surface px-2.5 py-1.5 text-sm outline-none focus:border-accent"
+              />
+              <button
+                onClick={appendComment}
+                disabled={!draft.trim()}
+                className="shrink-0 rounded-md border border-line px-3 py-1.5 text-sm font-medium text-ink transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Append
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
+}
+
+/** "1, 2, 3" → "1–3"; otherwise comma-join (PDF p.7 shows Ledger ID "1-3"). */
+function summarizeLedgerIds(ids: string[]): string {
+  const nums = ids.map(Number).sort((a, b) => a - b);
+  const contiguous = nums.length > 1 && nums.every((n, i) => i === 0 || n === nums[i - 1] + 1);
+  return contiguous ? `${nums[0]}–${nums[nums.length - 1]}` : nums.join(", ");
+}
+
+function formatStamp(): string {
+  const d = new Date();
+  return `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${d.getFullYear()}`;
 }
 
 // --- Pay Item Materials (status setter) ------------------------------------

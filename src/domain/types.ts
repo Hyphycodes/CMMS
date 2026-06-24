@@ -65,7 +65,14 @@ export interface Provenance {
 // Status sets (Ch. 14 — never invent these)
 // ---------------------------------------------------------------------------
 
-/** Inventory Status — Ch. 8 §8, Ch. 14. */
+/**
+ * Inventory Status — Ch. 8 §8, Ch. 14.
+ * TODO(status-split): the legacy system splits "Needs Attention" into
+ * "Needs Attention (Construction)" and "Needs Attention (Materials)" (PDF p.12,
+ * manual step 30). Kept as a single value for now (decision B). To split: add the
+ * two members here + to INVENTORY_STATUSES, extend INVENTORY_TONE in status.ts,
+ * and branch the bounce-back note in store.setInventoryStatus on the target.
+ */
 export type InventoryStatus = "Needs Attention" | "Ready for Review" | "Review Complete";
 export const INVENTORY_STATUSES: InventoryStatus[] = [
   "Needs Attention",
@@ -284,6 +291,21 @@ export interface InventoryItem extends Provenance {
   supplierName: string;
   /** null ⇒ blank Inventory Status (legacy allows it); excluded from review inbox. */
   status: InventoryStatus | null;
+  /**
+   * The status the item carried at seed time. `buildDetail` seeds each EOI row's
+   * approval off THIS (frozen) value, never the live `status`, so flipping the
+   * Inventory Status back and forth can never reshuffle the ledger / EOI / test
+   * IDs. Stamped once in `generateWorld`. (Proof bug fix — review status must be
+   * an outcome, not a mutation of the record.)
+   */
+  seedStatus?: InventoryStatus | null;
+  /**
+   * Pre-baked detail for migrated / demo inventory (real contract 61D34 and the
+   * real-project inventory derived from logged samples). When present,
+   * `buildDetail` returns this verbatim instead of generating — so the ledger
+   * quantities, EOI test-id links, and approvals are authoritative, not random.
+   */
+  seedDetail?: { ledger: LedgerEntry[]; eoi: EOIEntry[] };
   note: string;
   payItemNumbers: string[]; // linked pay items (Details tab)
   /** epoch ms the item entered "Ready for Review" — drives "oldest waiting first". */

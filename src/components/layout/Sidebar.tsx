@@ -23,6 +23,7 @@ const TREE_NODES = [
   { key: "quantity-book", label: "Quantity Book", Icon: BookIcon },
   { key: "material-allowance", label: "Material Allowance", Icon: TagIcon },
   { key: "inventory", label: "Inventory", Icon: BoxesIcon },
+  { key: "test-id-usage", label: "Test ID Usage", Icon: BeakerIcon },
   { key: "pay-estimate", label: "Pay Estimate", Icon: EstimateIcon },
   { key: "authorizations", label: "Authorizations", Icon: AuthIcon },
 ] as const;
@@ -34,6 +35,7 @@ const MATERIALS_NODES = [
   { to: "/samples", label: "Samples", Icon: FlaskIcon },
   { to: "/materials/definitions", label: "Material Definition", Icon: TagIcon },
   { to: "/materials/descriptions", label: "Descriptions", Icon: TagIcon },
+  { to: "/materials/test-id-usage", label: "Test ID Usage", Icon: BeakerIcon },
   { to: "/materials/vendors", label: "Vendors", Icon: TruckIcon },
   { to: "/materials/inspectors", label: "Inspectors", Icon: UsersIcon },
   { to: "/materials/laboratory", label: "Laboratory", Icon: BeakerIcon },

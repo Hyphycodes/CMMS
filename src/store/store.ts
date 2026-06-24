@@ -40,6 +40,10 @@ import type { FileScope } from "@/data/dataSource";
 import { lineAmount, sumAmounts } from "@/domain/money";
 import { getDataSource } from "@/data/dataSource";
 import { DEFAULT_SEED_CONFIG, buildOverlaidDetail, buildDiaryDay } from "@/data/seed/generate";
+import { buildFill } from "@/domain/rules/inventoryFill";
+import { computeTestIdUsage, type TestIdUsage, type TestIdDraw } from "@/domain/rules/testIdUsage";
+import { MATERIALS } from "@/data/reference";
+import { formatQty } from "@/lib/format";
 import type { EoiDelta, PayItemMaterialStatusDelta } from "@/data/dataSource";
 import { buildDemoUsers, DEFAULT_USER_ID } from "@/auth/demoUsers";
 import { can as canDo, visibleContractIds, type Capability } from "@/auth/permissions";
@@ -165,6 +169,17 @@ interface State {
   setLedger(itemId: string, rows: LedgerEntry[]): void;
   setEoi(itemId: string, rows: EOIEntry[]): void;
   setPayItemMaterialStatus(itemId: string, payItemNumber: string, status: PayItemMaterialStatus, note?: string): void;
+  /**
+   * Fill an inventory's Quantity Ledger + Evidence of Inspection up to the
+   * quantity its linked pay-item budget allows (in the material unit), tying the
+   * EOI rows to matching Test IDs. The headline "inventories fill up when being
+   * completed" path; also runnable on demand from the drawer.
+   */
+  fillInventory(itemId: string, opts?: { approve?: boolean; silent?: boolean }): void;
+  /** Test ID usage (capacity − consumed) across a contract, or program-wide when omitted. */
+  testIdUsage(contractId?: string): Map<string, TestIdUsage>;
+  /** Matching, approved Test IDs for an inventory (same material AND producer). */
+  matchingTestIds(itemId: string): string[];
 
   // contract sub-tabs (brief 06) — in-memory until persistence lands in brief 12
   addSubcontractor(contractId: string, row: SubcontractorRow): void;
@@ -510,6 +525,22 @@ export const useStore = create<State>((set, get) => ({
     }, `Couldn't save ${ids.length === 1 ? "status change" : `${ids.length} status changes`}`);
 
     if (status === "Review Complete") {
+      // Headline: completing an untouched inventory fills its ledger + EOI up to
+      // the quantity its pay-item budget allows. Only for a single item the actor
+      // can both edit AND approve (so the filled rows can be pre-approved without
+      // breaking the all-EOI-approved invariant), and only when nothing's been
+      // entered yet (never clobber real data or a baked demo record).
+      if (
+        ids.length === 1 &&
+        canDo(get().currentUser, "create_inventory") &&
+        canDo(get().currentUser, "approve_eoi")
+      ) {
+        const id = ids[0];
+        const item = get().items.find((i) => i.id === id);
+        if (item && !get().ledgerDeltas[id] && !item.seedDetail) {
+          get().fillInventory(id, { approve: true, silent: true });
+        }
+      }
       get().pushToast("success", `Marked ${ids.length} ${ids.length === 1 ? "item" : "items"} Review Complete`);
     }
   },
@@ -713,6 +744,86 @@ export const useStore = create<State>((set, get) => ({
       },
       "Couldn't save Pay Item Material Status",
     );
+  },
+
+  matchingTestIds(itemId) {
+    const item = get().items.find((i) => i.id === itemId);
+    if (!item) return [];
+    // The approved Test ID for that producer and material (PDF p.8): match on the
+    // inventory's material code AND producer. Approved samples first.
+    const matches = get().samplesList.filter(
+      (s) => s.testId && s.materialCode === item.materialCode && producerMatches(s, item),
+    );
+    matches.sort((a, b) => (a.status === "Approved" ? -1 : 1) - (b.status === "Approved" ? -1 : 1));
+    return [...new Set(matches.map((s) => s.testId))];
+  },
+
+  fillInventory(itemId, opts) {
+    if (!canDo(get().currentUser, "create_inventory")) {
+      if (!opts?.silent) get().pushToast("error", "Your role can't fill the Quantity Ledger.");
+      return;
+    }
+    const item = get().items.find((i) => i.id === itemId);
+    if (!item) return;
+    const payItems = get().payItemsFor(item.contractId);
+    const material = MATERIALS.find((m) => m.code === item.materialCode);
+    const testIds = get().matchingTestIds(itemId);
+    const { ledger, eoi, targetQty } = buildFill(item, payItems, material, {
+      testIds,
+      approve: opts?.approve,
+      now: Date.now(),
+    });
+    if (targetQty <= 0) {
+      if (!opts?.silent)
+        get().pushToast("info", "No linked pay-item budget to fill from — associate a pay item with placed quantity first.");
+      return;
+    }
+    get().setLedger(itemId, ledger);
+    get().setEoi(itemId, eoi);
+    if (!opts?.silent)
+      get().pushToast(
+        "success",
+        `Filled to budget — ${formatQty(targetQty, item.materialUnit)} across ${ledger.length} ${ledger.length === 1 ? "delivery" : "deliveries"}${testIds.length ? ` · tied to Test ID ${testIds[0]}` : ""}`,
+      );
+  },
+
+  testIdUsage(contractId) {
+    const { items, ledgerDeltas, eoiRowDeltas, eoiDeltas, payItemStatusDeltas, samplesList } = get();
+    // Candidates: demo inventory with a baked detail + anything the user edited.
+    // (Synthetic inventory carries random, non-sample Test IDs — excluded as noise.)
+    const candidates = items.filter(
+      (i) =>
+        (contractId ? i.contractId === contractId : true) &&
+        (i.seedDetail || ledgerDeltas[i.id] || eoiRowDeltas[i.id]),
+    );
+    const draws: TestIdDraw[] = [];
+    for (const item of candidates) {
+      const payItems = get().payItemsFor(item.contractId);
+      const detail = buildOverlaidDetail(item, payItems, {
+        eoiApproval: eoiDeltas,
+        ledger: ledgerDeltas,
+        eoiRows: eoiRowDeltas,
+        payItemStatus: payItemStatusDeltas,
+      });
+      const qtyById = new Map(detail.ledger.map((l) => [l.id, l.transactionQty]));
+      for (const row of detail.eoi) {
+        if (!row.testId) continue;
+        const qty = row.ledgerIds.reduce((s, id) => s + (qtyById.get(id) ?? 0), 0);
+        draws.push({
+          testId: row.testId,
+          qty,
+          inventoryItemId: item.id,
+          inventoryDisplayId: item.inventoryId,
+          contractId: item.contractId,
+          contractNumber: item.contractNumber,
+          materialCode: item.materialCode,
+        });
+      }
+    }
+    const samples = contractId
+      ? samplesList.filter((s) => s.contractId === contractId || s.contractId === null)
+      : samplesList;
+    return computeTestIdUsage(samples, draws);
   },
 
   addSubcontractor(contractId, row) {
@@ -1325,6 +1436,12 @@ export const useStore = create<State>((set, get) => ({
 
 function appendNote(existing: string, addition: string): string {
   return existing ? `${existing}\n${addition}` : addition;
+}
+
+/** Sample ↔ inventory producer match (number first, then name) — units line up by material. */
+function producerMatches(s: Sample, item: InventoryItem): boolean {
+  if (s.producerNumber && item.producerNumber) return s.producerNumber === item.producerNumber;
+  return !!s.producerName && s.producerName === item.producerName;
 }
 
 /**

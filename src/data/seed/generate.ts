@@ -55,6 +55,7 @@ import { lineAmount, sumAmounts } from "@/domain/money";
 import myProjects from "@/data/reference/my_projects.json";
 import mySamples from "@/data/reference/my_samples.json";
 import { CONTRACT_61D34, PAY_ITEMS_61D34, INVENTORY_61D34 } from "./contract61D34";
+import { buildRealProjectData } from "./realInventory";
 
 export const MASTER_SEED = "proof-cmms-v1";
 const MS_DAY = 86_400_000;
@@ -554,35 +555,96 @@ function generatePlacements(contracts: Contract[], payItemsByContract: Map<strin
  * the user to fill later. All required nested objects are empty/zeroed.
  */
 function makeRealContract(p: { number: string; name: string; workType: string }): Contract {
-  const emptySummary: ContractSummary = {
-    jobDescription: "", section: "", route: "", county: "", district: 0,
-    projectNumber: "", federalProjectNumber: "", contractStatus: "Active",
-    primeContractor: "", primeContractorId: "", residentEngineer: "",
-    supervisingFieldEngineer: "", districtConstructionEngineer: "", designerFirm: "",
-    projectImplementationEngineer: "", progressScheduleReceived: null, ehsPlanReceived: null,
-    dbeProgramReceived: null, lettingDate: null, awardDate: null, executedDate: null,
-    noticeToProceedDate: null, workBeginDate: null, contractCompletionDate: null,
-    finalInspectionDate: null, contractSuspendedDate: null, engineersEstimate: 0,
-    awardedAmount: 0, currentContractAmount: 0, totalPaidToDate: 0, dbeGoalPct: 0,
-    dbeCommittedPct: 0, adjustmentAmount: 0, primaryWorkType: p.workType, terrain: "",
-    funding: "", specificationYear: "", units: "English", timeType: "", originalContractTime: 0,
-    currentContractTime: 0, timeChargedToDate: 0, liquidatedDamagesPerDay: 0,
+  // "Good dummy info for every project" — a believable, deterministic summary so
+  // each real project reads like a live contract instead of an empty shell.
+  const rng = makeRng(`${MASTER_SEED}:realct:${p.number}`);
+  const district = 1; // the primary inspector's district
+  const county = rng.pick(IL_COUNTIES);
+  const workType = p.workType || rng.pick(WORK_TYPES);
+  const route = rng.pick(["FAP 356", "FAU 1600", "US 45", "IL 50", "IL 53", "FAI 80", "US 30", "IL 171"]);
+  const section = `(${rng.int(1, 40)}${rng.pick(["A", "B", "RS", "BR", "N"])}) ${rng.pick(["RS-1", "BR-2", "P-1", "I-3", "M-1"])}`;
+  const contractor = rng.pick(CONTRACTORS);
+
+  const now = Date.now();
+  const lettingDate = now - rng.int(300, 700) * MS_DAY;
+  const awardDate = lettingDate + rng.int(14, 45) * MS_DAY;
+  const executedDate = awardDate + rng.int(14, 45) * MS_DAY;
+  const ntpDate = executedDate + rng.int(7, 30) * MS_DAY;
+  const completionDate = now + rng.int(120, 480) * MS_DAY;
+  const awarded = money(rng, 1_200_000, 18_000_000);
+  const current = Math.round(awarded * rng.float(1.0, 1.07));
+  const paid = Math.round(current * rng.float(0.15, 0.6));
+
+  const summary: ContractSummary = {
+    jobDescription: `${workType} on ${route}, ${county} County`,
+    section, route, county, district,
+    projectNumber: `${rng.pick(["ACNHF", "STP", "NHPP", "HSIP"])}-${String(rng.int(1000, 9999))}(${rng.int(100, 999)})`,
+    federalProjectNumber: `${String(rng.int(1000, 9999))}(${rng.int(1, 99)})`,
+    contractStatus: "Active",
+    primeContractor: contractor,
+    primeContractorId: `C-${rng.int(10000, 99999)}`,
+    residentEngineer: rng.pick(["Jason Shuck", "Eric Ray", "T. Franklin", ...STAFF_NAMES]),
+    supervisingFieldEngineer: rng.pick(STAFF_NAMES),
+    districtConstructionEngineer: rng.pick(STAFF_NAMES),
+    designerFirm: rng.pick(DESIGNER_FIRMS),
+    projectImplementationEngineer: rng.pick(STAFF_NAMES),
+    progressScheduleReceived: isoDate(ntpDate + rng.int(1, 20) * MS_DAY),
+    ehsPlanReceived: isoDate(ntpDate + rng.int(1, 25) * MS_DAY),
+    dbeProgramReceived: isoDate(awardDate + rng.int(1, 30) * MS_DAY),
+    lettingDate: isoDate(lettingDate),
+    awardDate: isoDate(awardDate),
+    executedDate: isoDate(executedDate),
+    noticeToProceedDate: isoDate(ntpDate),
+    workBeginDate: isoDate(ntpDate + rng.int(1, 20) * MS_DAY),
+    contractCompletionDate: isoDate(completionDate),
+    finalInspectionDate: null,
+    contractSuspendedDate: null,
+    engineersEstimate: Math.round(awarded * rng.float(0.92, 1.1)),
+    awardedAmount: awarded,
+    currentContractAmount: current,
+    totalPaidToDate: paid,
+    dbeGoalPct: rng.pick([5, 6, 8, 10, 12]),
+    dbeCommittedPct: rng.pick([6, 8, 11, 13]),
+    adjustmentAmount: current - awarded,
+    primaryWorkType: workType,
+    terrain: rng.pick(["Level", "Rolling", "Urban"]),
+    funding: "Federal",
+    specificationYear: "2022",
+    units: "English",
+    timeType: rng.pick(["Working Days", "Completion Date"]),
+    originalContractTime: rng.int(80, 360),
+    currentContractTime: 0,
+    timeChargedToDate: 0,
+    liquidatedDamagesPerDay: rng.pick([750, 1000, 1500, 2200]),
   };
+  summary.currentContractTime = summary.originalContractTime + rng.int(0, 25);
+  summary.timeChargedToDate = Math.round(summary.currentContractTime * rng.float(0.1, 0.6));
+
   return {
     id: realContractId(p.number),
     number: p.number,
-    name: p.name || p.number,
-    county: "",
-    district: 0,
-    workType: p.workType,
+    name: p.name && p.name !== p.number ? p.name : `${county} County — ${workType}`,
+    county,
+    district,
+    workType,
     inventoryCount: 0,
     readyForReviewCount: 0,
-    summary: emptySummary,
+    summary,
     insurance: {
-      contractorNo: "", primeContractorName: "", itemNo: "", finalAcceptanceDate: null,
-      pctComplete: 0, pctCompleteDate: null, policies: [], railroad: [],
+      contractorNo: summary.primeContractorId, primeContractorName: contractor, itemNo: String(rng.int(1, 6)),
+      finalAcceptanceDate: null,
+      pctComplete: current ? Math.round((paid / current) * 100) : 0,
+      pctCompleteDate: isoDate(now - rng.int(10, 60) * MS_DAY),
+      policies: (["General Liability", "Automotive Liability", "Umbrella Liability", "Workman's Compensation"] as const).map((kind) => ({
+        kind, status: rng.weighted<string>([["Blanket Certification", 5], ["On File", 4]]), expiration: isoDate(now + rng.int(120, 540) * MS_DAY),
+      })),
+      railroad: [],
     },
-    subcontractors: [],
+    subcontractors: Array.from({ length: rng.int(1, 4) }, () => ({
+      createDate: isoDate(awardDate + rng.int(10, 120) * MS_DAY),
+      companyNumber: `C-${rng.int(10000, 99999)}`,
+      name: rng.pick([...CONTRACTORS, ...DESIGNER_FIRMS]),
+    })),
     projectDocuments: [],
     finalReview: {
       finalFromDistrict: {
@@ -756,6 +818,34 @@ export function generateWorld(config: SeedConfig = DEFAULT_SEED_CONFIG): World {
   // its "Needs Attention" default (these are freshly migrated, not yet reviewed).
   items.push(...INVENTORY_61D34);
 
+  // Samples are the user's 32 real samples — load them up front so the real-
+  // project inventory below can be derived from (and linked back to) them.
+  const samples = loadRealSamples();
+
+  // Real-project demo inventory: each logged sample becomes a coherent inventory
+  // record on its contract (matching material + producer + supplier), with a
+  // filled ledger that draws down part of the sample's quantity and an EOI row
+  // tied to the sample's Test ID. This is what makes the Test-ID match / usage /
+  // gray-out features show live numbers across every real project.
+  const realNumbers = new Set(myProjects.map((p) => p.number));
+  const realData = buildRealProjectData(samples, realNumbers);
+  for (const [cid, pis] of realData.payItemsByContract) payItemsByContract.set(cid, pis);
+  items.push(...realData.items);
+  const linkBySample = new Map(realData.sampleLinks.map((l) => [l.sampleId, l]));
+  for (const s of samples) {
+    const link = linkBySample.get(s.id);
+    if (link) {
+      s.inventoryItemId = link.inventoryItemId;
+      s.payItemNumber = link.payItemNumber;
+    }
+  }
+
+  // Freeze every item's seed-time status (the bug fix): buildDetail seeds EOI
+  // approvals off THIS, so review-status flips never rewrite the ledger / EOI /
+  // test IDs. Items that already carry a baked seedStatus (real-project demo
+  // inventory) keep theirs.
+  for (const it of items) if (it.seedStatus === undefined) it.seedStatus = it.status;
+
   // Denormalize counts onto contracts.
   const byContract = new Map<string, InventoryItem[]>();
   for (const it of items) {
@@ -769,8 +859,7 @@ export function generateWorld(config: SeedConfig = DEFAULT_SEED_CONFIG): World {
     c.readyForReviewCount = arr.filter((i) => i.status === "Ready for Review").length;
   }
 
-  // Samples are the user's 32 real samples only — no synthetic generation.
-  const samples = loadRealSamples();
+  // Samples (the user's 32 real samples) were loaded + linked above.
   const tests: Test[] = [];
 
   const suspensionsByContract = new Map<string, DiarySuspension[]>();
@@ -1163,6 +1252,18 @@ function injectDuplicateClusters(
 // ---------------------------------------------------------------------------
 
 export function buildDetail(item: InventoryItem, payItems: PayItem[]): InventoryDetail {
+  // Migrated / demo inventory carries an authoritative detail — return it verbatim
+  // (the random generator below never touches these), only deriving the live Pay
+  // Item Materials rows from the baked ledger.
+  if (item.seedDetail) {
+    return {
+      ...item,
+      ledger: item.seedDetail.ledger,
+      eoi: item.seedDetail.eoi,
+      payItemMaterials: buildPayItemMaterials(item, payItems, item.seedDetail.ledger),
+    };
+  }
+
   const rng = makeRng(`detail:${item.id}`);
   const material = MATERIALS.find((m) => m.code === item.materialCode);
 
@@ -1185,7 +1286,12 @@ export function buildDetail(item: InventoryItem, payItems: PayItem[]): Inventory
     });
   }
 
-  // Evidence of Inspection — one row per ledger (sometimes combined).
+  // Evidence of Inspection — one row per ledger (sometimes combined). The
+  // approval is seeded off the FROZEN seed-time status, never the live `status`,
+  // so flipping the Inventory Status back and forth can't reshuffle the random
+  // sequence (and with it the test IDs / docs flag / later rows). Status is the
+  // outcome of a review — it must never rewrite the record.
+  const seedStatus = item.seedStatus ?? item.status;
   const eoi: EOIEntry[] = ledger.map((l, i) => ({
     id: `${item.id}_eoi_${i + 1}`,
     ledgerIds: [l.id],
@@ -1194,9 +1300,9 @@ export function buildDetail(item: InventoryItem, payItems: PayItem[]): Inventory
     testId: rng.bool(0.7) ? String(rng.int(2000, 29999)) : "",
     // unreviewed items mostly Unset; reviewed ones carry an approval.
     approval:
-      item.status === "Review Complete"
+      seedStatus === "Review Complete"
         ? rng.weighted<EOIApproval>([["Approved", 8], ["Approved as Exception", 2]])
-        : item.status === "Ready for Review"
+        : seedStatus === "Ready for Review"
           ? rng.weighted<EOIApproval>([["Unset", 7], ["Approved", 3]])
           : "Unset",
     note: "",

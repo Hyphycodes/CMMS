@@ -15,6 +15,7 @@ import type {
 } from "@/domain/types";
 import payItemsRaw from "@/data/reference/61D34_pay_items.json";
 import inventoryRaw from "@/data/reference/61D34_inventory.json";
+import { MATERIALS } from "@/data/reference";
 
 const NUMBER = "61D34";
 // Keep in sync with realContractId() in generate.ts (inlined to avoid a circular import).
@@ -60,7 +61,7 @@ export const INVENTORY_61D34: InventoryItem[] = (
   contractNumber: NUMBER,
   materialCode: r.code,
   materialName: r.description,
-  materialUnit: "",
+  materialUnit: MATERIALS.find((m) => m.code === r.code)?.unit ?? "",
   producerNumber: r.producerNumber,
   producerName: r.producerName,
   supplierNumber: "",
